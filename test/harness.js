@@ -337,6 +337,10 @@ section('T12 wpu0020 backup dump (WPU_ excluded, token in memory)');
   const out2 = c.run('wpu0026', msg);
   ok(out2._client && out2._client.socketid === 'sock1', '_client preserved for private toast');
   ok(out2.payload.includes('/wpupdate/backup?token=' + c.stores.memory.WPU_dlToken), 'relative token link present');
+  ok(out2.payload.includes('<a href="/wpupdate/backup?token=' + c.stores.memory.WPU_dlToken + '"'), 'v4.9.1: clickable anchor in toast (DB1 escapes non-raw text)');
+  ok(out2.payload.includes('Download de backup</a>'), 'v4.9.1: anchor label present');
+  const t76 = tab.find(n => n.id === 'wpu0076');
+  ok(t76 && t76.raw === true, 'v4.9.1: private toast is raw:true so the anchor renders');
   ok(!/evil|localhost|127\.0\.0\.1|:\d{4}\//.test(out2.payload.match(/Download[^\s]*/)[0]), 'no absolute host in link', out2.payload.match(/Download[^\s]*/)[0]);
   // wpu0028 endpoint
   let r = c.run('wpu0028', { req: { query: { token: 'wrong' } } });
@@ -420,6 +424,7 @@ section('T16 v4.10 flow-download: phase, dump+token, private link, endpoint');
   ok(!c.stores.default.WPU_flowDump && !c.stores.default.WPU_flowDlToken, 'nothing flow-related in persisted store');
   ok(o3[0].socketid === 'sock99' && !!o3[0]._client, 'socketid + _client forwarded (DB1 private toast)');
   ok(o3[0].payload.includes('/wpupdate/flows?token=' + c.stores.memory.WPU_flowDlToken), 'relative token link in private message');
+  ok(o3[0].payload.includes('<a href="/wpupdate/flows?token=' + c.stores.memory.WPU_flowDlToken + '"'), 'v4.10.1: flows toast has a clickable anchor (DB1 escapes non-raw text)');
   // wpu0081 without cached flows -> error hub
   const c2 = makeCtx();
   const o3b = c2.run('wpu0081', {});
