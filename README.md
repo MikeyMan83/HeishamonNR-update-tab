@@ -1,33 +1,105 @@
 # HeishaMon NR update tab
 
-An importable Node-RED tab for [HeishaMoNR](https://github.com/edterbak/HeishaMoNR) that turns every package update into a four-click dashboard job: **Check for update**, **Backup settings**, **Restore**, **Update now**.
+An importable Node-RED tab for [HeishaMoNR](https://github.com/edterbak/HeishaMoNR) that reduces every package update to a four-click dashboard job: **Check for update**, **Backup settings**, **Restore**, **Update now**. No scripts, no SSH: the tab talks to Node-RED's own Admin API from inside the flow, and follows the in-flow Admin API precedent that the flow already sets (the GUI_01/GUI_02 tab-toggle uses `PUT /flow/:id`).
 
-Latest flow: [`update-tab.json`](update-tab.json) (v4.7, 69 nodes, one flow tab with its own `ui_tab`/`ui_group`; live-tested against the real 26.3.1 and 26.5.1 packages, 127/127 checks green).
+- Flow file: [`update-tab.json`](update-tab.json), v4.7, 69 nodes (one flow tab with its own `ui_tab`/`ui_group`; all node ids prefixed `wpu`, so an import never collides with package ids).
+- Verified against the real 26.3.1 and 26.5.1 packages: 127/127 automated checks green, including full id-merge runs with the updater tab itself present in the local flows.
+- Live smoke-tested in Node-RED 5.0.1 with node-red-dashboard DB1 (what the HeishaMoNR package runs on): imports without a single editor warning.
 
-## What it does
-
-- Version check from `version.json` in the repo root (recommended), with a repo-page scan fallback that needs no GitHub API.
-- Full global-context backup to a timestamped file plus a fixed `latest` copy, downloadable via a one-time token at `/wpupdate/backup`.
-- Two-click restore that works after a Node-RED restart, and writes a pre-restore snapshot first so the restore itself is reversible.
-- Id-based atomic merge via the Admin API (palette pre-flight, rev conflict detection, pre-update flow snapshot), preserving the local MQTT broker config and all personal tabs.
-- Readable dashboard errors for network-level failures (DNS/connection errors carry no status code) instead of failing silently.
-
-## Import (one-time)
-
-1. In Node-RED: menu, Import, paste/upload `update-tab.json`, "Import to new flow tab", Deploy.
-2. Open the **WP Update** dashboard tab, enter Synology Node-RED admin credentials once (or set `WPU_ADMIN_USER`/`WPU_ADMIN_PASS` environment variables in the container).
-3. Smoke test: press **Check for update**.
-
-Re-importing an older copy of the tab? Delete the old flow tab first (including its `ui_tab`/`ui_group` under Configuration Nodes) so ids stay unique.
-
-## Feature request / draft PR: self-service update tab
+## Why
 
 The current update procedure (manual tab deletion, config cleanup, screenshots for settings) is error-prone and costs every user 30+ minutes per release. Since node ids are already stable across releases (verified: 26.3.1 -> 26.5.1 share 3547 ids; 1 removed, 15 added), a scripted atomic update is safe. This tab ships inside the flow package and reduces every future update to the four steps above. Admin credentials can come from environment variables instead of the dashboard fields, so no password needs to sit in the editor or context.
 
-The tab ships with a repo-scan fallback (reads the plain repo page, picks the highest `flows (X stable).json`, no GitHub API, so no rate limits) and therefore works with the repo as it is today. It is also robust against a fully rebuilt release (all-new node ids, which the repo has not done so far but could): flow tabs are additionally matched on their stable labels, placeholder MQTT broker references are rescued to the locally most-used broker, and leftover old dashboard items are reported rather than silently deleted. Recommended addition: a `version.json` in the root, updated per release (generation can be automated in CI):
+## What's in it
+
+- **Check for update**: fetches the running flows via the Admin API, reads the version from the "Line - Changelog" node, compares against `version.json` in the repo and shows Installed vs Available. If `version.json` is missing, it automatically falls back to a repo scan: the plain GitHub repo page is read, the highest "flows (X stable).json" picked and the raw URL built (no GitHub API, so no rate limits). Verified live against the repo page; the built raw URL serves the real 2.9 MB flow (HTTP 200). Since v4.7, network-level failures (DNS/connection errors, which carry no status code) surface immediately as a readable dashboard error instead of disappearing silently.
+- **Backup settings**: dumps the full global context (F_RTC, F_CCC, F_SS and all history) to two files in the Node-RED data directory: a timestamped archive and a fixed `wp-backup-latest.json`; downloadable via `/wpupdate/backup` (host derived from the Admin API URL), only with the one-time download token from the toast, valid for 24 hours (http nodes sit outside adminAuth). The tab's own `WPU_` state is excluded, so backups never nest themselves. An optional **Backup directory** field supports a fixed path (in a Docker container: `/data`).
+- **Restore** (two clicks): reads `wp-backup-latest.json` from disk (works after a Node-RED restart), inspects it (key count, timestamp, flow version) and asks for confirmation. On confirm it first writes a safety copy of the current state (`wp-prerestore-snapshot-<timestamp>.json`), then restores every settings key. The restore itself is therefore reversible too.
+- **Admin login**: dashboard fields (password masked) or, safer, the `WPU_ADMIN_USER` / `WPU_ADMIN_PASS` environment variables of the Node-RED container: the password then never sits in the editor or context. UI fields win over env vars.
+- **Update now**: downloads the new flow.json (URL pinned to the HeishaMoNR repo), fetches the palette (`GET /nodes` with `Accept: application/json`), refuses on missing node types, writes a pre-update flow snapshot first (rollback next to the rev conflict check), then runs the id-based merge and deploys everything in one atomic operation (`POST /flows` with rev conflict check). A version check older than one hour is refused; an expired admin token (401) is refreshed automatically, and refreshed proactively after an hour. Before merging, the download is verified: the changelog node inside the file must report the expected version (wrong file or forgotten bump = refuse, nothing changed).
+
+## What Ed can put in the repo (optional)
+
+Without a version pointer the tab already works via the repo scan. Cleaner (and CI-automatable) is a `version.json` in the repo root, updated per release:
 
 ```json
-{ "version": "...", "flowUrl": "https://raw.githubusercontent.com/.../flows (X stable).json", "notes": "..." }
+{
+  "version": "26.5.1",
+  "flowUrl": "https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/flows (26.5.1 stable).json",
+  "notes": "Fixed bug #218; RTC revert fix"
+}
 ```
 
-The pre-flight reads `GET /nodes` with `Accept: application/json` (required by the editor API) and only counts enabled, error-free node sets; tab/group/junction/subflow instances are flow-config types, not palette types. Before every deploy the current flows are written to a pre-update snapshot (`wp-preupdate-flows-<timestamp>.json`) as a rollback next to the rev conflict check. Backups go to an optional backup directory (`/data` in Docker) and the download endpoint requires a one-time token from the toast, because http nodes are not covered by adminAuth. Download URLs from `version.json` are pinned to the repo, releases are X.Y.Z only, and before merging the changelog node inside the downloaded flow must report the expected version (wrong file or forgotten bump = refused, nothing changed). Download tokens expire after 24 hours; admin tokens are refreshed hourly. The tab-swap by label only applies when no local tab with that label matches on id (a personal tab coincidentally named like a package tab survives an id-stable release). A successful deploy covers the deploy operation; the pre-update flow snapshots are the recovery path if the new flows fail at startup. If this tab ships inside the package itself, an id-stable release self-updates it cleanly; a locally renamed copy with different ids would remain as a duplicate tab and needs a one-time manual cleanup. The tab follows the existing in-flow Admin API precedent (the GUI_01/GUI_02 tab-toggle already uses `PUT /flow/:id`).
+The tab tries `version.json` first; if absent, the repo scan follows; only if both fail (GitHub unreachable) does a clear error appear and nothing changes. Optionally on top: GitHub releases, so `update_instructions.md` can refer to them.
+
+## Install (one-time)
+
+0. If an earlier version (v3/v4.0) is already imported: delete that tab completely first (select tab > Delete; then Configuration Nodes > unused, remove the old WP Update `ui_tab`/`ui_group`) before importing the new JSON; node ids are unchanged, so double ids would clash.
+1. Import `update-tab.json` (menu > Import). A **WP Update** flow tab and an **Update** dashboard tab appear. The deploy shows no warnings: the file nodes and toast conform to the palette definitions (DB1).
+2. In the dashboard, set: **Admin API URL** (default `http://localhost:1880`; with `httpAdminRoot` e.g. `http://localhost:1880/red`) and optionally **Admin user/password** (only if the editor is protected with adminAuth; the token is fetched via `POST /auth/token` and kept in persistent context). Set **Backup directory** to `/data` if Node-RED runs in a Docker container, so backups and snapshots survive container recreation.
+3. Press **Check for update**. If it shows "26.5.1 (update!)": **Backup settings**, then **Update now**.
+4. After the deploy the flows restart: refresh the dashboard and check the new version on [WP Home].
+
+## Merge rules of the core
+
+1. Nodes inside package tabs (tab/subflow ids are stable across versions, verified 26.3.1 -> 26.5.1): replace the local definition with the new one. Safety net for a fully rebuilt release (all-new ids): flow tabs are additionally matched on their stable labels (the 10 package tab names have been identical in every release so far), per label only when no local tab with that label matches on id; old package tabs are then still cleaned up, and a personal tab that coincidentally carries the same label is guaranteed to survive an id-stable release.
+2. Broker rescue: if the new package references an unconfigured placeholder broker (host "x.x.x.x") that does not exist locally, all package mqtt references are rewritten to the locally most-used broker. Prevents the heat pump silently dying on a broken MQTT config after a rebuild.
+3. Package config nodes by id: same, except `mqtt-broker`: the **local broker always wins** (your host/port stays untouched).
+4. Broker references inside package mqtt nodes keep the **local** broker (works for the package placeholder config and for a fully own broker).
+5. Everything outside the package (personal tabs, own dashboard items, own brokers, other integrations): untouched.
+6. Singleton configs (`global-config`, `ui_base`): only the package version survives (prevents duplicate manifests with per-release changing ids), but the env array of the local `global-config` is merged: your own environment variables win, new package entries are added.
+7. Pre-flight: palette check (`GET /nodes` with `Accept: application/json`; only sets without err and with enabled=true count; tab/subflow/group/junction and subflow instances are flow-config types, not palette types) and duplicate-id check before the POST. After passing, the current flows are first written to a pre-update snapshot.
+8. Reporting instead of blind deletion: old ui_tab names are partly generic ("Home", "Settings"), so old dashboard tabs are never silently dropped but reported on the result screen; same for local tabs with a WP name the new package does not know. An own ui_tab with a generic name like "Home" is guaranteed to survive. The ui_tab warning only sounds on a genuinely detected id-rebuild (label match without id match), not on an id-stable update.
+9. The POST is atomic with a rev conflict check (409 = flows changed in between, press again). On a failing merge or POST nothing changes and the old version keeps running.
+10. Download URLs from `version.json` are pinned to `https://raw.githubusercontent.com/edterbak/HeishaMoNR/...`; a tampered `version.json` therefore cannot make the tab download arbitrary URLs.
+
+## Honest edge cases
+
+- Hand edits *inside* [WP ...] tabs are reset to package defaults (same as the official procedure; the backup covers settings, but own code inside package tabs belongs in [WP Personal] or upstream as a PR).
+- Own nodes placed *inside* a WP tab (against the project convention) fall under the tab swap and disappear. Keep personal stuff in [WP Personal].
+- The login sits in the tab's persistent context (the password field is masked in the dashboard but still stored plainly in context); only fill it in on a LAN-only installation, or run the Admin API without adminAuth. Safer: leave the fields empty and set `WPU_ADMIN_USER` / `WPU_ADMIN_PASS` in the container environment.
+- After a successful deploy the final toast may no longer appear (the flow replaces itself); the version on [WP Home] is the real confirmation.
+- GUI_01/GUI_02 disabled tabs and the changelog node are recognized and covered in the tests.
+- The backup covers the default global context store; settings in a named store stay outside (HeishaMoNR uses only the default store).
+- Restore is a JSON round-trip: Date/Buffer/Map values come back as plain JSON (strings/arrays). In this package (settings and numeric history) that plays no role.
+- `http in` routes sit outside adminAuth; the download endpoint therefore works only with a one-time token. If your Node-RED port is not on a trusted LAN only, set `httpNodeAuth` in settings.js.
+- Admin tokens expire (default after 7 days): the tab catches the 401, clears the token and fetches a new one on the next click; after an hour the token is refreshed proactively.
+- A successful deploy is no proof that the new flow is healthy at runtime. If the new version fails to start, import the latest pre-update flow snapshot (`wp-preupdate-flows-<timestamp>.json`) in the editor; the settings backup covers the global context.
+- The settings backup covers only the default global context: no node/flow context, no config-node credentials (those live encrypted in the flows), no external files/databases. For HeishaMoNR (settings + history in the global context) that suffices; it is not a complete Node-RED backup.
+- The repo scan reads the HTML of the repo root page. Live checked: the root has 9 files and the HTML payload (234 KB) contains all flow-json names in full; the scan finds 26.5.1. GitHub lazy-loads the file list only on much larger repos; if the root ever counts dozens of files the scan could become incomplete. That is why the scan is deliberately a "fallback": `version.json` in the repo is the recommended primary route.
+- If Ed ships this tab inside the package release, it self-updates cleanly on id-stable releases. Only a locally renamed copy with different node ids remains as a duplicate tab and needs a one-time manual cleanup.
+
+## Test report (generated tab vs the real packages)
+
+| Scenario | Result |
+|---|---|
+| S0 Structure | 69 unique nodes, consistent outputs/wires, complete widgets, hubs exclusively via link-ins (error hub: 9 sources, notifications: 6), file catch covers all five file actions, network catch all seven http request nodes |
+| S1 Admin token flow | without user: direct GET /flows; user without token: POST /auth/token with env password fallback; stored token reused; token older than 1 hour proactively refreshed; new token + tokenTime stored; failed login gives a clear error |
+| S2 GET /flows processing | v2 {flows, rev} and v1 bare array; version from changelog node; large flows to the memory store (no MB persistence); 401 clears the token; apply without or with a stale check refused; a fresh check starts the download with the untouched, normalized URL |
+| S3 Version comparison | version.json 404 activates the repo scan; spaces in flowUrl normalized; latest + checkedAt stored; update message lists the next steps; equal version recognized; flowUrl outside the HeishaMoNR repo refused without overwriting latest |
+| S4 Repo scan fallback | highest version from the HTML, normalized raw URL + checkedAt, update message mentions the fallback; no hits and an unreachable page give clear errors |
+| S5 flow.json download | payload array to the memory store; /nodes request with Accept: application/json, Bearer and API version v2; failed download reports status + exact URL |
+| S6 Pre-flight refusals | HTML blob without Accept, empty palette, err/enabled-false sets and missing local flows all refuse with a clear message; 401 on /nodes clears the token |
+| S7 Id-stable merge (real packages) | all 3562 package nodes delivered by id; local broker definition kept with its own host; own environment variable survives the global-config swap (env merge); v2 POST with rev + deploy type full; third output writes the exact current flows as pre-update snapshot, with backup-dir prefix; v1 client gets a bare array. Review scenarios: renamed package tab swaps by id; disappeared package tab stays conservatively with a suspect warning; personal tab with a package label ("WP Dash") stays without a false orphan alarm |
+| S8 Full id-rebuild (fresh ids + own Home tab) | all package mqtt refs rewritten to the live local broker; unused placeholder broker filtered out; own tab stays; the per-label safety net still cleans up ALL rebuilt flow tabs on a real rebuild; orphan report counts the rebuilt ui_tabs plus the own same-named tab; no duplicate ids; pre-update snapshot also here |
+| S9 Deploy result | 200/204, 409 rev conflict and 500 with the right texts; orphan warning included in the success message |
+| S10 Error hub | error sets status + passthrough to toast and status field |
+| S11 Backup chain | dump without WPU_ keys (no self-nesting), complete metadata, download token + timestamp refreshed, archive + fixed latest copy, backup dir /data respected, download endpoint: 404 without backup, 403 without/wrong/expired (24h TTL) token, attachment with the right token; download link host derived from the Admin API URL (http://nas.local:1880/red -> http://nas.local:1880/wpupdate/backup?token=...), default localhost |
+| S12 Restore chain | reads the latest copy (in the backup dir), inspects keys + timestamp, pre-restore snapshot without WPU_ keys, restore skips WPU_ keys and keeps extra current keys, pending cleared, catch scope exact; review fix: WITHOUT positive write confirmation of the snapshot NOTHING is restored (gate in the apply step) |
+| S13 Configuration | backup dir stored with slash stripping; user or password change invalidates the stored token; boot fills url/user/backup dir and never sends the password to the dashboard |
+| S14 Layout | 66 canvas nodes on a unique 320x80 grid; snapshot hook and network catch chain as a straight column below the file catch; geometry: 0 grazes, 0 overlap, only the identified fan-in crossing at the version fields |
+| S15 Network errors (v4.7) | DNS/connection errors (msg.error without statusCode) surface as readable "Network error: ..." on the error hub with node status; statusCode fallback (HTTP 503) and "unknown" without either; all seven http request nodes in the catch scope |
+
+Total: 127/127 checks passed (v4.7 suite, fully rebuilt and run as a whole against the real 26.3.1/26.5.1 packages, with round-trip: all tested code comes literally from `update-tab.json`). The v4.7 suite replaces the v4.6 suite (101/101; before that v4.5: 119/119 and v4.4.2: 87/87). The geometry and syntax checks (structure, grid, crossings, hook-backs, link back-references) run alongside the suite and report green with one identified remaining crossing.
+
+## Feature request / draft PR: self-service update tab
+
+The full FR text as filed with HeishaMoNR:
+
+> The current update procedure (manual tab deletion, config cleanup, screenshots for settings) is error-prone and costs every user 30+ minutes per release. Since node ids are already stable across releases (verified: 26.3.1 -> 26.5.1 share 3547 ids; 1 removed, 15 added), a scripted atomic update is safe. This tab ships inside the flow package and reduces every future update to: Check for update, Backup settings (full global context to a timestamped file plus a fixed latest copy, downloadable via /wpupdate/backup), Restore (two-click restore from disk that works even after a Node-RED restart, and writes a pre-restore snapshot of the current state so the restore itself is reversible), Update now (id-based atomic merge via the Admin API with palette pre-flight and rev conflict detection; local mqtt-broker config and all personal tabs are preserved by design). Admin credentials can come from environment variables (WPU_ADMIN_USER / WPU_ADMIN_PASS) instead of the dashboard fields, so no password needs to sit in the editor or context.
+>
+> The tab ships with a repo-scan fallback (reads the plain repo page, picks the highest "flows (X stable).json", no GitHub API, so no rate limits) and therefore works with the repo as it is today. It is also robust against a fully rebuilt release (all-new node ids, which the repo has not done so far but could): flow tabs are additionally matched on their stable labels, placeholder MQTT broker references are rescued to the locally most-used broker, and leftover old dashboard items are reported rather than silently deleted. Recommended addition: a `version.json` in the root, updated per release (generation can be automated in CI): `{ "version": "...", "flowUrl": "https://raw.githubusercontent.com/.../flows (X stable).json", "notes": "..." }`
+>
+> The pre-flight reads GET /nodes with Accept: application/json (required by the editor API) and only counts enabled, error-free node sets; tab/group/junction/subflow instances are flow-config types, not palette types. Before every deploy the current flows are written to a pre-update snapshot (wp-preupdate-flows-<timestamp>.json) as a rollback next to the rev conflict check. Backups go to an optional backup directory (/data in Docker) and the download endpoint requires a one-time token from the toast, because http nodes are not covered by adminAuth. Download URLs from version.json are pinned to the repo, releases are X.Y.Z only, and before merging the changelog node inside the downloaded flow must report the expected version (wrong file or forgotten bump = refused, nothing changed). Download tokens expire after 24 hours; admin tokens are refreshed hourly. The tab-swap by label only applies when no local tab with that label matches on id (a personal tab coincidentally named like a package tab survives an id-stable release). A successful deploy covers the deploy operation; the pre-update flow snapshots are the recovery path if the new flows fail at startup. If this tab ships inside the package itself, an id-stable release self-updates it cleanly; a locally renamed copy with different ids would remain as a duplicate tab and needs a one-time manual cleanup. The tab follows the existing in-flow Admin API precedent (GUI_01/GUI_02 tab-toggle already uses PUT /flow/:id). Full merge rules, test report against the real 26.3.1/26.5.1 packages and the importable flow JSON are in the PR.
+
+See [CHANGELOG.md](CHANGELOG.md) for the full version history and the three processed external reviews.
