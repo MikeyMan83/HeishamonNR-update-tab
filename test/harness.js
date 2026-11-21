@@ -448,6 +448,28 @@ section('T16 v4.10 flow-download: phase, dump+token, private link, endpoint');
   ok(!r.payload.includes(c.stores.memory.WPU_flowDlToken), 'token VALUE not inside the served payload');
 }
 
+section('T17 v4.10.2 link-node hygiene (editor-symmetric exports)');
+{
+  const all = Array.isArray(tab) ? tab : tab.nodes;
+  const byId = Object.fromEntries(all.map(n => [n.id, n]));
+  const asym = [];
+  for (const n of all) {
+    if (n.type === 'link out') {
+      if (!Array.isArray(n.wires) || n.wires.length !== 0) asym.push('wires ' + n.id);
+      for (const t of n.links || []) {
+        const tin = byId[t];
+        if (!tin || tin.type !== 'link in' || !(tin.links || []).includes(n.id)) asym.push('out->in ' + n.id + '->' + t);
+      }
+    } else if (n.type === 'link in') {
+      for (const t of n.links || []) {
+        const tout = byId[t];
+        if (!tout || tout.type !== 'link out' || !(tout.links || []).includes(n.id)) asym.push('in->out ' + n.id + '->' + t);
+      }
+    }
+  }
+  ok(asym.length === 0, 'every link out/in pair is editor-symmetric + wires:[] (so editor imports and re-deploys keep the link)', asym);
+}
+
 console.log('\n==============================');
 console.log('TOTAL: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
