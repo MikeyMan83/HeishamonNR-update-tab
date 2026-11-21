@@ -2,7 +2,11 @@
 
 All dates are 21 Nov 2026: this tab was built, reviewed and hardened in one day. Key facts per version: the button behaviour and merge rules are stable since v4.6; earlier versions are mostly of historical interest.
 
-## v4.10.2 (current, 76 nodes)
+## v4.10.3 (current, 76 nodes)
+
+Layout fix: the private toast `wpu0076` (added in v4.10) was placed on the same grid cell as the error function `wpu0040` (4540,160) — moved to (4540,80). No other same-cell collisions; all 76 nodes on the 320x80 grid, link pairs symmetric, no dangling wires. Harness still 122/122.
+
+## v4.10.2 (76 nodes)
 
 Post-v4.10 sweep (source-verified, no live bug): the v4.10 flow-download link was wired asymmetrically and `wpu0082` (link out) was missing its `wires: []`. Verified against the Node-RED 5.0.1 sources:
 
