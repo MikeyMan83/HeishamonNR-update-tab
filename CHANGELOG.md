@@ -2,7 +2,15 @@
 
 All dates are 21 Nov 2026: this tab was built, reviewed and hardened in one day. Key facts per version: the button behaviour and merge rules are stable since v4.6; earlier versions are mostly of historical interest.
 
-## v4.10 (current, 76 nodes)
+## v4.10.1 (current, 76 nodes)
+
+Live-use finding (the backup link "didn't download anything" when clicked): node-red-dashboard's toast handler HTML-escapes every non-raw message (main.js show-toast: `temp.textContent = msg.message; msg.message = temp.innerHTML`), so the download URL in the toast was plain text, not a hyperlink. Fix, verified against the DB1 source:
+
+- Both private toasts (`wpu0076` for the backup token, reused by the v4.10 flow download) now render raw HTML (`raw: true`) and the payloads carry a real `<a href="/wpupdate/...?token=...">Download ...</a>` anchor. The page stays put because the endpoints answer with `Content-Disposition: attachment`, so clicking starts the browser download directly.
+- Toast content remains fully server-generated (timestamped filename + alphanumeric token), so enabling raw carries no injection risk; the socketid privacy fix from v4.8.1 is unchanged.
+- Harness: +4 asserts (anchor present in both toast payloads, both label texts, toast node `raw: true`, flows-download anchor) -> **121/121**.
+
+## v4.10 (76 nodes)
 
 New feature: **Download flow** button (`wpu0080`). It runs a fresh `GET /flows` via the Admin API (phase `flowdl` through `wpu0010`, loopback/`WPU_ADMIN_BASE` as always), `wpu0015` gained a 4th output for this phase, and `wpu0081` stores the dump (`WPU_flowDump`, memory store only) plus a fresh `fl…` token (`WPU_flowDlToken`, memory, 24h) and emits a **private** toast (`wpu0082` -> `wpu076`/`wpu0076`, `sendall:false` + `msg.socketid` + `_client`, per the v4.8.1 DB1 finding) with a relative link `/wpupdate/flows?token=…`. New endpoint `wpu0083`/`wpu0084`/`wpu0085`: 404 before the first click, 403 without/wrong/expired token, 200 + `attachment; filename=flows-<date>.json` with a valid token — same protection model as `/wpupdate/backup`, since `http in` nodes sit outside adminAuth.
 
