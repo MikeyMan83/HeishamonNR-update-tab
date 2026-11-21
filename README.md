@@ -67,6 +67,7 @@ The tab tries `version.json` first; if absent, the repo scan follows; only if bo
   ```
 - Backup and snapshot files (`wp-backup-*.json`, `wp-prerestore-*.json`, `wp-preupdate-flows-*.json`) are plain JSON containing the full global context / full flows — keep the Node-RED data directory (and the optional Backup directory) readable only by the Node-RED user.
 - After a successful deploy the final toast may no longer appear (the flow replaces itself); the version on [WP Home] is the real confirmation.
+- An editor window that was already open before **Update now** keeps showing the pre-update flows: the deploy happens through the Admin API, outside that editor session. Menu > Export in the stale window exports exactly that stale view, not the running flows, and pressing Deploy there would roll the update back. Reload the editor (F5) after an update before exporting or editing anything.
 - GUI_01/GUI_02 disabled tabs and the changelog node are recognized and covered in the tests.
 - The backup covers the default global context store; settings in a named store stay outside (HeishaMoNR uses only the default store).
 - Restore is a JSON round-trip: Date/Buffer/Map values come back as plain JSON (strings/arrays). In this package (settings and numeric history) that plays no role.
