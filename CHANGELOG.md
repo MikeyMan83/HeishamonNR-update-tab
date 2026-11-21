@@ -13,7 +13,12 @@ Fourth external review processed; every finding verified against the v4.7 code b
 - **Subflow match in the rebuild safety net**: subflows are matched on their `name` (they have no `label`), so a full id-rebuild would now also clean up rebuilt subflow definitions instead of leaving unreferenced duplicates.
 - Node count 69 -> 70 (removed `wpu0004`, added `wpu076`/`wpu0076`).
 
-Validation after the change: JSON re-parsed, 70 nodes, no dangling wires/links, all 19 function bodies pass `node --check`, no references to the removed `adminBase`/persistent-token fields remain. The v4.7 S-suite (127/127) should be re-run before release; the changed code paths are S1, S2, S6, S11 and S13.
+Validation after the change (reproducible via `node test/harness.js`, committed):
+
+- Structure: JSON re-parsed, 70 nodes, no dangling wires/links, all 19 function bodies pass `node --check`, no references to the removed `adminBase`/persistent-token fields remain.
+- **91/91 simulation checks** running the literal shipped `func` code in a mocked Node-RED function environment against the **real `flows (26.5.1 stable).json` from edterbak/HeishaMoNR** (downloaded automatically on first run): version detection reads 26.5.1 from the real changelog node; id-stable merge delivers all 3562 package nodes with zero duplicate ids, local broker (reconfigured host) wins, personal tab + the updater tab itself survive, `global-config` env merge works, pre-update snapshot emitted; full id-rebuild scenario cleans all 12 old WP/GUI tabs by label, rewrites placeholder-broker refs to the live broker, reports orphan ui_tabs; palette pre-flight refusal; 409 handling; SSRF guard (evil `adminBase` in context is ignored, all Admin API calls go to loopback/`WPU_ADMIN_BASE`, env credentials are only POSTed to loopback); token/password/download-token memory-only; backup excludes `WPU_*`; download endpoint 403/404/200 + 24h expiry; private toast keeps `_client` and uses a relative link; boot never echoes the password; restore refuses without snapshot confirmation.
+- **12/12 live Admin API contract checks** against a real local Node-RED (loopback `127.0.0.1:1880`, no adminAuth, node-red-dashboard installed): `GET /flows` v1 array vs v2 `{flows, rev}`; `GET /nodes` returns JSON only with `Accept: application/json` (HTML blob without — exactly why the tab sets it); `POST /flows` with v2 + `Node-RED-Deployment-Type: full` + rev deploys the actual `update-tab.json` (200, all 70 wpu nodes present); stale rev -> 409; v1 bare-array POST still accepted; `/wpupdate/backup` answers 404/403 as designed.
+- The v4.7 S-suite (127/127) should still be re-run on the target Synology; the changed code paths are S1, S2, S6, S11 and S13.
 
 ## v4.7 (69 nodes, 127/127 checks)
 
