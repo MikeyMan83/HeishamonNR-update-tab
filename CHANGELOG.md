@@ -11,6 +11,7 @@ Post-v4.8 source review: every v4.8 security claim was verified against the actu
 - **`RED.settings` does not exist in a function node**: the function sandbox (@node-red/nodes 5.0.1, core/function/10-function.js) exposes only `RED.util`, and `getSetting` is a stub, so the guarded `RED.settings.httpAdminRoot` always yields an empty string and the v4.8 adminBase is always `http://127.0.0.1:1880` regardless of a configured `httpAdminRoot`. README corrected: `WPU_ADMIN_BASE` is required for a non-standard port or a non-empty `httpAdminRoot`.
 - Stale texts: the error hints in `wpu0015`/`wpu0030`/`wpu005a` and the tab info still referred to the removed "Admin API URL" field; now they point to `WPU_ADMIN_BASE`.
 - Harness re-run after the fixes: **91/91** simulation checks green.
+- Edge case documented after live use on the target Synology: after Update now the deployment is 26.5.1 immediately, but an editor window opened before the update keeps serving the pre-update view, and its Export dialog exports that stale view (observed: two exports that looked like a failed update while the runtime was already at 26.5.1). Reload the editor (F5) before exporting, and never Deploy from a stale window: that would roll the update back.
 
 ## v4.8 (70 nodes)
 
