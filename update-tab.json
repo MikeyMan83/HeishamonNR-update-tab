@@ -1,0 +1,1327 @@
+[
+  {
+    "id": "wpu-tab-0001",
+    "type": "tab",
+    "label": "WP Update",
+    "disabled": false,
+    "info": "[WP Update] flow-tab voor HeishaMoNR (PR-materiaal).\nAutomatische versie-check, settings-backup EN -restore (volledige global context van/naar bestand, download-endpoint),\nplus een-klik atomaire update via de Node-RED Admin API (id-merge met rebuild-vingnetten).\n\nWerkt met version.json in de repo-root; ontbreekt die, dan volgt automatisch een repo-scan van de gewone GitHub-pagina.\nAdmin-inlog: via de dashboard-velden of via de omgevingsvariabelen WPU_ADMIN_USER / WPU_ADMIN_PASS.\nZie de meegeleverde README voor installatie, gedrag en randvoorwaarden.",
+    "env": []
+  },
+  {
+    "id": "wpu-ui-tab",
+    "type": "ui_tab",
+    "z": "wpu-tab-0001",
+    "name": "WP Update",
+    "icon": "fa-download",
+    "order": 95,
+    "disabled": false,
+    "hidden": false
+  },
+  {
+    "id": "wpu-ui-grp",
+    "type": "ui_group",
+    "z": "wpu-tab-0001",
+    "name": "Update",
+    "tab": "wpu-ui-tab",
+    "order": 1,
+    "disp": true,
+    "width": "12",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "wpu0000",
+    "type": "inject",
+    "z": "wpu-tab-0001",
+    "name": "Bij start: velden vullen",
+    "x": 60,
+    "y": 80,
+    "wires": [
+      [
+        "wpu000b"
+      ]
+    ],
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "1",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date"
+  },
+  {
+    "id": "wpu0001",
+    "type": "ui_button",
+    "z": "wpu-tab-0001",
+    "name": "Controleer op update",
+    "x": 60,
+    "y": 560,
+    "wires": [
+      [
+        "wpu0010"
+      ]
+    ],
+    "group": "wpu-ui-grp",
+    "order": 1,
+    "width": 4,
+    "height": 1,
+    "passthru": false,
+    "label": "Controleer op update",
+    "tooltip": "Haalt de huidige en de nieuwste versie op",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "fa-search",
+    "payload": "",
+    "payloadType": "str",
+    "topic": "check",
+    "topicType": "str"
+  },
+  {
+    "id": "wpu0002",
+    "type": "ui_button",
+    "z": "wpu-tab-0001",
+    "name": "Backup settings",
+    "x": 60,
+    "y": 800,
+    "wires": [
+      [
+        "wpu0020"
+      ]
+    ],
+    "group": "wpu-ui-grp",
+    "order": 2,
+    "width": 4,
+    "height": 1,
+    "passthru": false,
+    "label": "Backup settings",
+    "tooltip": "Schrijft de volledige global context (al je instellingen) naar een JSON-bestand in de Node-RED datamap",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "fa-save",
+    "payload": "",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str"
+  },
+  {
+    "id": "wpu0003",
+    "type": "ui_button",
+    "z": "wpu-tab-0001",
+    "name": "UPDATE UITVOEREN",
+    "x": 60,
+    "y": 640,
+    "wires": [
+      [
+        "wpu0010"
+      ]
+    ],
+    "group": "wpu-ui-grp",
+    "order": 5,
+    "width": 4,
+    "height": 1,
+    "passthru": false,
+    "label": "UPDATE UITVOEREN",
+    "tooltip": "Installeert de nieuwste HeishaMoNR-versie. Maak eerst een backup! De flows herstarten na afloop.",
+    "color": "#ffffff",
+    "bgcolor": "#aa0000",
+    "className": "",
+    "icon": "fa-bolt",
+    "payload": "",
+    "payloadType": "str",
+    "topic": "apply",
+    "topicType": "str"
+  },
+  {
+    "id": "wpu0004",
+    "type": "ui_text_input",
+    "z": "wpu-tab-0001",
+    "name": "Admin API URL",
+    "x": 700,
+    "y": 160,
+    "wires": [
+      [
+        "wpu0011"
+      ]
+    ],
+    "label": "Admin API URL",
+    "tooltip": "Bijvoorbeeld http://localhost:1880 (of http://localhost:1880/red bij httpAdminRoot)",
+    "group": "wpu-ui-grp",
+    "order": 6,
+    "width": 4,
+    "height": 1,
+    "passthru": false,
+    "mode": "text",
+    "delay": 300,
+    "topic": "adminBase",
+    "sendOnBlur": true,
+    "className": "",
+    "topicType": "str"
+  },
+  {
+    "id": "wpu0005",
+    "type": "ui_text_input",
+    "z": "wpu-tab-0001",
+    "name": "Admin user (optioneel)",
+    "x": 700,
+    "y": 240,
+    "wires": [
+      [
+        "wpu0011"
+      ]
+    ],
+    "label": "Admin user (optioneel)",
+    "tooltip": "Alleen vullen als de Node-RED editor met wachtwoord beveiligd is. Alternatief zonder inlog in de editor: omgevingsvariabele WPU_ADMIN_USER",
+    "group": "wpu-ui-grp",
+    "order": 7,
+    "width": 4,
+    "height": 1,
+    "passthru": false,
+    "mode": "text",
+    "delay": 300,
+    "topic": "user",
+    "sendOnBlur": true,
+    "className": "",
+    "topicType": "str"
+  },
+  {
+    "id": "wpu0006",
+    "type": "ui_text_input",
+    "z": "wpu-tab-0001",
+    "name": "Admin wachtwoord (optioneel)",
+    "x": 700,
+    "y": 320,
+    "wires": [
+      [
+        "wpu0011"
+      ]
+    ],
+    "label": "Admin wachtwoord (optioneel)",
+    "tooltip": "Optioneel. Bewaard wordt het in de persistente flow context van deze tab. Veiliger alternatief: leeg laten en de omgevingsvariabelen WPU_ADMIN_USER / WPU_ADMIN_PASS gebruiken (docker-omgeving of settings.js), dan staat het wachtwoord nergens in de editor of context",
+    "group": "wpu-ui-grp",
+    "order": 8,
+    "width": 4,
+    "height": 1,
+    "passthru": false,
+    "mode": "password",
+    "delay": 300,
+    "topic": "pass",
+    "sendOnBlur": true,
+    "className": "",
+    "topicType": "str",
+    "pass": true
+  },
+  {
+    "id": "wpu0007",
+    "type": "ui_text",
+    "z": "wpu-tab-0001",
+    "name": "Geïnstalleerd",
+    "x": 3260,
+    "y": 480,
+    "wires": [],
+    "label": "Geïnstalleerd",
+    "group": "wpu-ui-grp",
+    "order": 9,
+    "width": 3,
+    "height": 1,
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "style": false
+  },
+  {
+    "id": "wpu0008",
+    "type": "ui_text",
+    "z": "wpu-tab-0001",
+    "name": "Beschikbaar",
+    "x": 3260,
+    "y": 560,
+    "wires": [],
+    "label": "Beschikbaar",
+    "group": "wpu-ui-grp",
+    "order": 10,
+    "width": 3,
+    "height": 1,
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "style": false
+  },
+  {
+    "id": "wpu0009",
+    "type": "ui_text",
+    "z": "wpu-tab-0001",
+    "name": "Status",
+    "x": 4860,
+    "y": 320,
+    "wires": [],
+    "label": "Status",
+    "group": "wpu-ui-grp",
+    "order": 11,
+    "width": 8,
+    "height": 2,
+    "format": "{{msg.payload}}",
+    "layout": "col-left",
+    "className": "",
+    "style": false
+  },
+  {
+    "id": "wpu0035",
+    "type": "ui_toast",
+    "z": "wpu-tab-0001",
+    "name": "Melding",
+    "x": 4540,
+    "y": 240,
+    "position": "top right",
+    "displayTime": "5",
+    "highlight": "",
+    "sendall": true,
+    "ok": "OK",
+    "cancel": "",
+    "raw": false,
+    "className": "",
+    "topic": ""
+  },
+  {
+    "id": "wpu0010",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] prep GET /flows",
+    "x": 380,
+    "y": 560,
+    "wires": [
+      [
+        "wpu0012"
+      ],
+      [
+        "wpu0013"
+      ]
+    ],
+    "func": "// [WP Update] voorbereiding Admin API GET /flows\n// phase: \"check\" of \"apply\" (komt via msg.topic van de knop)\n// Inloggegevens: eerst de dashboard-velden, anders omgevingsvariabelen\n// WPU_ADMIN_USER / WPU_ADMIN_PASS. Dat is de veilige route: geen wachtwoord\n// in de editor of in de Node-RED context (alleen in de container-omgeving).\n// uit1: rechtstreeks GET /flows | uit2: eerst POST /auth/token\nconst c = flow.get(\"WPU_cfg\") || {};\nconst st = flow.get(\"WPU\") || {};\nconst base = (c.adminBase || \"http://localhost:1880\").replace(/\\/+$/, \"\");\nconst phase = (msg.topic === \"apply\") ? \"apply\" : \"check\";\nconst uiUser = (c.user !== undefined && c.user !== null) ? String(c.user).trim() : \"\";\nconst uiPass = (c.pass !== undefined && c.pass !== null) ? String(c.pass) : \"\";\nconst user = uiUser || (env.get(\"WPU_ADMIN_USER\") || \"\");\nconst pass = uiPass || (env.get(\"WPU_ADMIN_PASS\") || \"\");\n\nfunction authHeader(tok) {\n    const h = { \"Node-RED-API-Version\": \"v2\" };\n    if (tok) { h[\"Authorization\"] = \"Bearer \" + tok; }\n    return h;\n}\nfunction getFlowsMsg(tok) {\n    return {\n        _phase: phase, _base: base,\n        url: base + \"/flows\", method: \"GET\",\n        headers: authHeader(tok), payload: \"\"\n    };\n}\n\n// Direct verder als geen inlog of een vers token (max 1 uur: admin-tokens\n// vervallen server-side; vooruit verversen voorkomt een 401 midden in een keten)\nif (!user) { return [getFlowsMsg(null), null]; }\nif (st.token) {\n    if (st.tokenTime && (Date.now() - st.tokenTime > 60 * 60 * 1000)) {\n        st.token = null;\n        flow.set(\"WPU\", st);\n    } else {\n        return [getFlowsMsg(st.token), null];\n    }\n}\n\n// Eerst een token halen\nconst tokenMsg = {\n    _phase: phase, _base: base,\n    url: base + \"/auth/token\", method: \"POST\",\n    headers: { \"Content-Type\": \"application/json\" },\n    payload: {\n        client_id: \"node-red-admin\",\n        grant_type: \"password\",\n        scope: \"*\",\n        username: user,\n        password: pass\n    }\n};\nreturn [null, tokenMsg];\n",
+    "outputs": 2,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "wpu0013",
+    "type": "http request",
+    "z": "wpu-tab-0001",
+    "name": "POST /auth/token",
+    "x": 700,
+    "y": 720,
+    "wires": [
+      [
+        "wpu0014"
+      ]
+    ],
+    "method": "use",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": []
+  },
+  {
+    "id": "wpu0014",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] token verwerken",
+    "x": 1020,
+    "y": 720,
+    "wires": [
+      [
+        "wpu0012"
+      ],
+      [
+        "wpu060"
+      ]
+    ],
+    "func": "// [WP Update] antwoord van POST /auth/token verwerken, dan door naar GET /flows\nconst st = flow.get(\"WPU\") || {};\nconst p = msg.payload || {};\nif (msg.statusCode === 200 && p.access_token) {\n    st.token = p.access_token;\n    st.tokenTime = Date.now();\n    flow.set(\"WPU\", st);\n    const out = {\n        _phase: msg._phase, _base: msg._base,\n        url: msg._base + \"/flows\", method: \"GET\",\n        headers: { \"Node-RED-API-Version\": \"v2\", \"Authorization\": \"Bearer \" + p.access_token },\n        payload: \"\"\n    };\n    return [out, null];\n}\n// token mislukt: niet direct stoppen, maar duidelijke fout\nreturn [null, { payload: \"Admin-login mislukt (status \" + msg.statusCode + \"). Controleer user/wachtwoord-velden. Let op: bij adminAuth zonder credentials-type werkt Node-RED met API-keys, dan kun je het beste zonder inlog draaien op het LAN.\", topic: \"WP Update fout\" }];",
+    "outputs": 2,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "wpu0012",
+    "type": "http request",
+    "z": "wpu-tab-0001",
+    "name": "GET /flows",
+    "x": 1340,
+    "y": 560,
+    "wires": [
+      [
+        "wpu0015"
+      ]
+    ],
+    "method": "use",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": []
+  },
+  {
+    "id": "wpu0015",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] verwerk GET /flows",
+    "x": 1660,
+    "y": 560,
+    "wires": [
+      [
+        "wpu0016"
+      ],
+      [
+        "wpu0018"
+      ],
+      [
+        "wpu061"
+      ]
+    ],
+    "func": "// [WP Update] GET /flows verwerken\n// uit1 (check): huidige versie tonen, dan version.json ophalen\n// uit2 (apply): nieuwe flow.json downloaden\n// uit3 (fout): foutmelding\nconst st = flow.get(\"WPU\") || {};\nconst raw = msg.payload;\nconst isV2 = !Array.isArray(raw) && raw && Array.isArray(raw.flows);\nconst flows = isV2 ? raw.flows : (Array.isArray(raw) ? raw : null);\nif (msg.statusCode === 401) {\n    st.token = null;\n    flow.set(\"WPU\", st);\n    return [null, null, { payload: \"Admin-login geweigerd (401): token vervallen of inlog gewijzigd. Druk opnieuw op de knop; er wordt dan automatisch een nieuw token opgehaald.\", topic: \"WP Update fout\" }];\n}\nif (!flows) {\n    return [null, null, { payload: \"Kan de eigen flows niet ophalen via de Admin API (status \" + msg.statusCode + \"). Staat Admin API URL goed? Voorbeeld: http://localhost:1880\", topic: \"WP Update fout\" }];\n}\nconst rev = isV2 ? raw.rev : null;\nst.rev = rev;\nst.apiV2 = isV2;\n\n// Actuele versie uit de changelog-node (\"Line - Changelog\": \"Version 26.5.1 Stable\")\nlet cur = null;\nfor (let i = 0; i < flows.length; i++) {\n    const n = flows[i];\n    if (n && n.name === \"Line - Changelog\" && typeof n.format === \"string\") {\n        const m = /Version (\\d+\\.\\d+\\.\\d+)/.exec(n.format);\n        if (m) { cur = m[1]; break; }\n    }\n}\nst.currentVersion = cur;\nflow.set(\"WPU\", st);\n// grote blob alléén in de geheugenstore (voorkomt MB-schrijfacties naar disk)\nflow.set(\"WPU_localFlows\", flows, \"memory\");\nnode.status({ text: \"Huidige versie: \" + (cur || \"onbekend\") });\n\nconst curText = cur || \"onbekend\";\nmsg._phase = msg._phase || \"check\";\nif (msg._phase === \"apply\") {\n    if (!st.latest || !st.latest.flowUrl) {\n        return [null, null, { payload: \"Eerst [Controleer op update] drukken: de tab moet weten waar de nieuwe versie te halen is.\", topic: \"WP Update fout\" }];\n    }\n    if (st.latest.checkedAt && (Date.now() - st.latest.checkedAt > 60 * 60 * 1000)) {\n        return [null, null, { payload: \"Update gestopt: de laatste versie-check is ouder dan een uur, versie \" + st.latest.version + \" kan verouderd zijn. Druk eerst op [Controleer op update] en daarna opnieuw op [UPDATE UITVOEREN].\", topic: \"WP Update fout\" }];\n    }\n    const out = {\n        _phase: \"apply\", _base: msg._base,\n        url: st.latest.flowUrl, method: \"GET\", // v4.4.1: al genormaliseerd bij opslag; encodeUri hier gaf %2520 = live-404\n        headers: {}, payload: \"\"\n    };\n    return [null, out, null];\n}\n// check-vertakking: versie-info ophalen\nconst out = {\n    _phase: \"check\", _base: msg._base, _cur: curText,\n    url: \"https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/version.json\",\n    method: \"GET\", headers: {}, payload: \"\"\n};\nreturn [out, null, null];",
+    "outputs": 3,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "wpu0016",
+    "type": "http request",
+    "z": "wpu-tab-0001",
+    "name": "GET version.json",
+    "x": 1980,
+    "y": 560,
+    "wires": [
+      [
+        "wpu0019"
+      ]
+    ],
+    "method": "use",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": []
+  },
+  {
+    "id": "wpu0019",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] versies vergelijken",
+    "x": 2300,
+    "y": 560,
+    "wires": [
+      [
+        "wpu0007"
+      ],
+      [
+        "wpu0008"
+      ],
+      [
+        "wpu062"
+      ],
+      [
+        "wpu0017"
+      ]
+    ],
+    "func": "// [WP Update] versies vergelijken (na het ophalen van version.json)\n// uit1: veld \"Geïnstalleerd\" | uit2: veld \"Beschikbaar\" | uit3: toast/status\n// uit4: als version.json ontbreekt -> repo-scan (fallback)\nconst st = flow.get(\"WPU\") || {};\nconst cur = msg._cur || st.currentVersion || \"onbekend\";\nconst v = msg.payload;\nif (msg.statusCode !== 200 || !v || !v.version) {\n    // version.json nog niet door de repo aangeboden: via de gewone repo-pagina scannen\n    return [ { payload: cur }, { payload: \"-\" }, null,\n        { url: \"https://github.com/edterbak/HeishaMoNR\", method: \"GET\",\n          headers: { \"User-Agent\": \"HeishaMoNR-WP-Update-tab\" }, payload: \"\" } ];\n}\nif (!/^\\d+\\.\\d+\\.\\d+$/.test(String(v.version))) {\n    return [ { payload: cur }, { payload: \"-\" },\n        { payload: \"version.json bevat een onverwacht versie-formaat (\\\"\" + v.version + \"\\\"); alleen X.Y.Z (stable) wordt ondersteund.\", topic: \"WP Update fout\" },\n        null ];\n}\nconst fq = normUrl(v.flowUrl);\nif (!/^https:\\/\\/raw\\.githubusercontent\\.com\\/edterbak\\/HeishaMoNR\\//.test(fq)) {\n    return [ { payload: cur }, { payload: \"-\" },\n        { payload: \"version.json bevat een flowUrl buiten de HeishaMoNR-repo (\" + v.flowUrl + \"); download geweigerd.\", topic: \"WP Update fout\" },\n        null ];\n}\nst.latest = { version: v.version, flowUrl: fq, notes: v.notes || \"\", checkedAt: Date.now() };\nflow.set(\"WPU\", st);\nif (isNewerVersion(cur, v.version)) {\n    return [ { payload: cur }, { payload: v.version + \" (update!)\" },\n        { payload: \"Update beschikbaar: \" + v.version + \". Maak eerst een [Backup settings], druk daarna op [UPDATE UITVOEREN].\" + (v.notes ? \" Notes: \" + v.notes : \"\"), topic: \"WP Update\" },\n        null ];\n}\nreturn [ { payload: cur }, { payload: v.version },\n    { payload: \"Je draait al de nieuwste versie (\" + cur + \").\", topic: \"WP Update\" },\n    null ];\n\nfunction normUrl(u) {\n    // v4.4.1: spaties -> %20, bestaande procent-encoding (done by de repo-scan) blijft intact\n    return String(u).replace(/%(?![0-9A-Fa-f]{2})/g, \"%25\").replace(/ /g, \"%20\");\n}\nfunction isNewerVersion(a, b) {\n    if (!a) { return true; }\n    const pa = String(a).split(\".\").map(Number);\n    const pb = String(b).split(\".\").map(Number);\n    for (let i = 0; i < 3; i++) {\n        const x = pa[i] || 0, y = pb[i] || 0;\n        if (y > x) { return true; }\n        if (y < x) { return false; }\n    }\n    return false;\n}",
+    "outputs": 4,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "wpu0018",
+    "type": "http request",
+    "z": "wpu-tab-0001",
+    "name": "GET nieuwe flow.json",
+    "x": 1980,
+    "y": 720,
+    "wires": [
+      [
+        "wpu0021"
+      ]
+    ],
+    "method": "use",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": []
+  },
+  {
+    "id": "wpu0021",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] verwerk nieuwe flow.json",
+    "x": 2300,
+    "y": 720,
+    "wires": [
+      [
+        "wpu0022"
+      ],
+      [
+        "wpu064"
+      ]
+    ],
+    "func": "// [WP Update] nieuwe flow.json binnengekomen; nu palette-info (GET /nodes) ophalen\nconst st = flow.get(\"WPU\") || {};\nif (!Array.isArray(msg.payload)) {\n    return [null, { payload: \"Download van de nieuwe flow.json mislukt (status \" + msg.statusCode + \") via \" + msg.url + \". Klopt de repo (flows (X.Y.Z stable).json in de root) of de flowUrl in version.json?\", topic: \"WP Update fout\" }];\n}\nflow.set(\"WPU_newFlows\", msg.payload, \"memory\");\n// integriteit: de changelog-node in het bestand moet de verwachte versie melden\nlet newVers = null;\nfor (const n of msg.payload) {\n    if (n && n.name === \"Line - Changelog\" && typeof n.format === \"string\") {\n        const m = /Version (\\d+\\.\\d+\\.\\d+)/.exec(n.format);\n        if (m) { newVers = m[1]; break; }\n    }\n}\nif (newVers && st.latest && st.latest.version && newVers !== st.latest.version) {\n    return [null, { payload: \"Download-verificatie mislukt: de gedownloade flow meldt versie \" + newVers + \" terwijl versie \" + st.latest.version + \" verwacht werd (changelog-node). Download geweigerd; er is niets gewijzigd.\", topic: \"WP Update fout\" }];\n}\nconst c = flow.get(\"WPU_cfg\") || {};\nconst base = (c.adminBase || \"http://localhost:1880\").replace(/\\/+$/, \"\");\n// GET /nodes geeft alléén JSON bij Accept: application/json (editor-api v4/v5); zonder Accept krijg je de HTML-configblob\nconst headers = { \"Node-RED-API-Version\": \"v2\", \"Accept\": \"application/json\" };\nif (st.token) { headers[\"Authorization\"] = \"Bearer \" + st.token; }\nmsg.url = base + \"/nodes\";\nmsg.method = \"GET\";\nmsg.headers = headers;\nmsg.payload = \"\";\nreturn [msg, null];",
+    "outputs": 2,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "wpu0022",
+    "type": "http request",
+    "z": "wpu-tab-0001",
+    "name": "GET /nodes (palette)",
+    "x": 2620,
+    "y": 720,
+    "wires": [
+      [
+        "wpu0030"
+      ]
+    ],
+    "method": "use",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": []
+  },
+  {
+    "id": "wpu0030",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] MERGE + pre-flight",
+    "x": 2940,
+    "y": 720,
+    "wires": [
+      [
+        "wpu0023"
+      ],
+      [
+        "wpu066"
+      ],
+      [
+        "wpu0057"
+      ]
+    ],
+    "func": "// ============================================================================\n// [WP Update] DE KERN: id-gebaseerde merge van het WP-package\n// Werkt op basis van stabiele node-ids (geverifieerd 26.3.1 -> 26.5.1), met\n// vangnetten voor het geval Ed ooit een release met VOLLEDIG nieuwe ids uitbrengt:\n//   - flow-tabs worden behalve op id ook op LABEL herkend (\"WP Dash\", ...;\n//     labels zijn tot nu toe nooit gewijzigd); een herbouwde package ruimt\n//     de oude tabs dan alsnog op\n//   - koppelt de nieuwe package een NIET-geconfigureerde placeholder-broker\n//     (host \"x.x.x.x\"), dan worden alle mqtt-referenties herschreven naar de\n//     lokaal meest-gebruikte broker (voorkomt stille MQTT-brei na rebuild)\n// Verdere regels (id-stabil scenario):\n//   1. Nodes binnen package-tabs: lokale definitie vervangen door de nieuwe.\n//   2. Package-config-nodes op id: idem, BEHALVE mqtt-broker: de lokale broker\n//      wint ALTÍJD (jouw host/poort blijft staan).\n//   3. Lokaal geconfigureerde broker-referenties in package mqtt-nodes blijven\n//      de referentie van de lokale versie (voorkomt kapotte 'missing config').\n//   4. Alles buiten het package: onaangeroerd.\n//   5. Singleton-configs (global-config ui_base): alleen de package-versie.\n//   6. Pre-flight: palette-check en duplicaat-id-check vóór de POST.\n//   7. Rapportage van achtergebleven verdachte oude items (niet automatisch\n//      verwijderd; zie _orphanUiTabs / _suspectTabs; alleen bij een id-rebuild).\n// ============================================================================\nconst st = flow.get(\"WPU\") || {};\n// grote blobs alléén in de geheugenstore (memory): geen MB-persistent-schrijfacties\nconst local = flow.get(\"WPU_localFlows\", \"memory\");\nconst newPkg = flow.get(\"WPU_newFlows\", \"memory\");\nconst errMsg = (t) => [null, { payload: t, topic: \"WP Update fout\" }, null];\n\nif (!Array.isArray(local) || !Array.isArray(newPkg)) {\n    return errMsg(\"Interne fout: lokale flows of nieuwe package ontbreken. Opnieuw: [Controleer] en [UPDATE UITVOEREN].\");\n}\n\n// ---- 1. Palette-check ----\n// GET /nodes: platte lijst node-sets met types[] (editor-api/registry), alléén\n// JSON bij Accept: application/json (staat op de /nodes-aanvraag). Sets met\n// err of enabled=false tellen niet mee. tab/subflow/group/junction en\n// subflow:<id> zijn flow-config-types en zitten nooit in /nodes.\nconst BUILTIN = new Set([\"tab\", \"subflow\", \"group\", \"junction\"]);\nconst sets = msg.payload;\nconst available = new Set();\nif (!Array.isArray(sets)) {\n    if (msg.statusCode === 401) {\n        const st401 = flow.get(\"WPU\") || {};\n        st401.token = null;\n        flow.set(\"WPU\", st401);\n        return errMsg(\"Admin-login geweigerd (401) bij het ophalen van de palette-info. Druk opnieuw op [Controleer op update] en [UPDATE UITVOEREN]; er wordt dan een nieuw token gehaald.\");\n    }\n    return errMsg(\"Kan de palette-info niet lezen (GET /nodes gaf geen lijst; status \" + msg.statusCode + \"). Controleer de Admin API URL of meld dit als bug.\");\n}\nfor (const s of sets) {\n    const entries = (s && Array.isArray(s.nodes)) ? s.nodes : [s];\n    for (const e of entries) {\n        if (!e || e.err || e.enabled === false) { continue; }\n        const types = Array.isArray(e.types) ? e.types : (e.type ? [e.type] : []);\n        for (const t of types) { available.add(t); }\n    }\n}\nconst missing = [];\nfor (const n of newPkg) {\n    if (!n.type || BUILTIN.has(n.type) || n.type.indexOf(\"subflow:\") === 0) { continue; }\n    if (!available.has(n.type) && missing.indexOf(n.type) === -1) {\n        missing.push(n.type);\n    }\n}\nif (missing.length > 0) {\n    return errMsg(\"Kan niet updaten: node-type(s) ontbreken in de palette: \" + missing.join(\", \") + \". Installeer eerst de benodigde Node-RED libraries (zie repo-documentatie).\");\n}\n\n// ---- 2. Scope bepalen ----\nconst pkgIds = new Set(newPkg.map(n => n.id));\nconst pkgTabs = newPkg.filter(n => n.type === \"tab\" || n.type === \"subflow\");\nconst pkgTabIds = new Set(pkgTabs.map(n => n.id));\nconst pkgTabLabels = new Set(pkgTabs.map(t => String(t.label || \"\").trim()).filter(Boolean));\n\n// Lokale flow-tabs die qua LABEL bij de package horen (rebuild-vingnet).\n// Per-label beleid: een label-match ruimt alléén op als GEEN enkele lokale tab\n// met dat label op ID met de package matcht (echte id-rebuild). Bij een\n// id-stabiele release matcht de package-tab al op id; een extra, persoonlijke\n// tab met toevallig hetzelfde label blijft dan gegarandeerd staan.\nconst doomedLocalTabs = new Set();\nconst labelTabs = new Map();\nfor (const n of local) {\n    if (n.type === \"tab\" || n.type === \"subflow\") {\n        const L = String(n.label || \"\").trim();\n        if (pkgTabLabels.has(L)) {\n            if (!labelTabs.has(L)) { labelTabs.set(L, { ids: [], onId: 0 }); }\n            const e = labelTabs.get(L);\n            e.ids.push(n.id);\n            if (pkgTabIds.has(n.id)) { e.onId++; }\n        }\n    }\n}\nfor (const e of labelTabs.values()) {\n    if (e.onId === 0) { for (const id of e.ids) { doomedLocalTabs.add(id); } }\n}\n\n// ---- 3. Brokers in kaart ----\nconst localBrokers = new Set();\nfor (const n of local) { if (n.type === \"mqtt-broker\") { localBrokers.add(n.id); } }\n// lokale broker-referenties binnen de oude package (id-stabil scenario)\nconst localBrokerRef = new Map();\nfor (const n of local) {\n    const inPkg = pkgIds.has(n.id) || (n.z && (pkgTabIds.has(n.z) || doomedLocalTabs.has(n.z))) || doomedLocalTabs.has(n.id);\n    if (inPkg && n.broker) { localBrokerRef.set(n.id, n.broker); }\n}\n// de lokaal meest-gebruikte broker = de \"levende\" broker (rebuild-vingnet)\nconst usage = {};\nfor (const n of local) {\n    if (n.broker) { usage[n.broker] = (usage[n.broker] || 0) + 1; }\n}\nlet liveBroker = null, liveMax = -1;\nfor (const id of Object.keys(usage)) {\n    if (usage[id] > liveMax && localBrokers.has(id)) { liveMax = usage[id]; liveBroker = id; }\n}\n// package broker-definities (om placeholders te herkennen)\nconst pkgBrokerDefs = new Map();\nfor (const n of newPkg) { if (n.type === \"mqtt-broker\") { pkgBrokerDefs.set(n.id, n); } }\n\n// lokale global-config-env bewaren: de omgevingsvariabelen van de gebruiker\n// mogen niet verloren gaan als de package een eigen global-config meebrengt\nlet localGlobalEnv = null;\nfor (const n of local) {\n    if (n.type === \"global-config\" && Array.isArray(n.env) && n.env.length > 0) { localGlobalEnv = n.env; }\n}\n\n// ---- 4. Lokale nodes: package-gedeelte weg (behalve de lokale broker) ----\nconst result = [];\nfor (const n of local) {\n    const inPkg = pkgIds.has(n.id) || doomedLocalTabs.has(n.id) ||\n        (n.z && (pkgTabIds.has(n.z) || doomedLocalTabs.has(n.z)));\n    if (!inPkg) { result.push(n); continue; }\n    if (n.type === \"mqtt-broker\") { result.push(n); }\n}\n\n// ---- 5. Nieuwe package-definities toevoegen ----\nconst pendingBrokers = [];\nfor (const n of newPkg) {\n    if (n.type === \"mqtt-broker\") {\n        if (localBrokers.has(n.id)) { continue; }\n        pendingBrokers.push(n);\n        continue;\n    }\n    const def = JSON.parse(JSON.stringify(n));\n    if (def.broker) {\n        const pkgDef = pkgBrokerDefs.get(def.broker);\n        if (pkgDef && pkgDef.broker === \"x.x.x.x\" && liveBroker) {\n            def.broker = liveBroker; // vangnet: niet-geconfigureerde package-broker\n        } else if (localBrokerRef.has(n.id) && localBrokers.has(localBrokerRef.get(n.id))) {\n            def.broker = localBrokerRef.get(n.id); // lokale referentie behouden\n        }\n    }\n    if (def.type === \"global-config\" && localGlobalEnv) {\n        // env samenvoegen: lokale entries winnen, nieuwe package-entries komen erbij\n        const merged = localGlobalEnv.slice();\n        for (const pe of (def.env || [])) {\n            if (!merged.some(le => le.name === pe.name)) { merged.push(pe); }\n        }\n        def.env = merged;\n    }\n    result.push(def);\n}\nfor (const b of pendingBrokers) {\n    const used = result.some(n => n && n.broker === b.id);\n    if (used) { result.push(b); }\n}\n\n// ---- 6. Singleton-config types: alleen de package-versie ----\nconst SINGLETONS = [\"global-config\", \"ui_base\"];\nconst pkgSingletons = {};\nfor (const n of newPkg) { if (SINGLETONS.indexOf(n.type) !== -1) { pkgSingletons[n.type] = true; } }\nfor (let i = result.length - 1; i >= 0; i--) {\n    const n = result[i];\n    if (pkgSingletons[n.type] && !pkgIds.has(n.id)) { result.splice(i, 1); }\n}\n\n// ---- 7. Sanity: geen duplicaat-ids ----\nconst seen = new Set();\nfor (const n of result) {\n    if (seen.has(n.id)) { return errMsg(\"Interne fout: duplicaat node-id na merge: \" + n.id + \". NIET gepusht; meld dit als bug.\"); }\n    seen.add(n.id);\n}\n\n// ---- 8. Rapport: achtergebleven oude items ----\n// ui_tab-labels van de nieuwe package (\"Home\", \"Settings\", ...): te generiek om\n// automatisch te verwijderen, dus alleen MELDEN, en alléén als er een duidelijke\n// id-REBUILD speelt (doomedLocalTabs > 0). In een id-stabiele merge heeft een\n// persoonlijk tabblad met toevallig dezelfde naam niks te zoeken in de melding.\nconst newUiTabNames = new Set(newPkg.filter(n => n.type === \"ui_tab\").map(n => String(n.name || \"\").trim()));\n// echte id-rebuild = label-match ZONDER id-match (bij id-stabiele merges vallen\n// alle label-matches samen met id-matches en is dit nul)\nconst rebuildDetected = Array.from(doomedLocalTabs).some(id => !pkgIds.has(id));\nconst orphanUiTabs = [];\nif (rebuildDetected) {\n    for (const n of result) {\n        if (n.type === \"ui_tab\" && !pkgIds.has(n.id) && newUiTabNames.has(String(n.name || \"\").trim())) {\n            orphanUiTabs.push(n.name || n.id);\n        }\n    }\n}\n// lokale tabs met een \"WP \"-naam die niet (meer) in de nieuwe package passen\n// (\"WP Personal\" is de officiële persoonlijke tab en valt daar buiten;\n// \"WP Update\" is deze updater-tab zelf: nooit een \"verdachte\" tab noemen)\nconst suspectTabs = [];\nfor (const n of result) {\n    if (n.type === \"tab\" && n.label && /^WP /i.test(String(n.label)) &&\n        !/^WP (Personal|Update)$/i.test(String(n.label).trim()) &&\n        !pkgTabLabels.has(String(n.label).trim())) {\n        suspectTabs.push(n.label);\n    }\n}\nlet report = [];\nif (orphanUiTabs.length) { report.push(orphanUiTabs.length + \" oude dashboard-tabblad(en) uit een eerdere versie zijn blijven staan (naam komt overeen met de nieuwe package); opruimen via Configuration Nodes indien leeg/dubbel.\"); }\nif (suspectTabs.length) { report.push(\"Lokale tab(s) met WP-naam niet herkend in de nieuwe package: \" + suspectTabs.join(\", \") + \" — mogelijk hernoemd door de developer; controleer handmatig.\"); }\n\n// ---- 9. POST voorbereiden ----\nconst c = flow.get(\"WPU_cfg\") || {};\nconst base = (c.adminBase || \"http://localhost:1880\").replace(/\\/+$/, \"\");\nconst headers = { \"Content-Type\": \"application/json\", \"Node-RED-Deployment-Type\": \"full\" };\nif (st.apiV2) {\n    headers[\"Node-RED-API-Version\"] = \"v2\";\n    if (st.token) { headers[\"Authorization\"] = \"Bearer \" + st.token; }\n} else if (st.token) {\n    headers[\"Authorization\"] = \"Bearer \" + st.token;\n}\nconst body = (st.apiV2) ? { flows: result, rev: st.rev } : result;\n\nnode.log(\"[WP Update] \" + local.length + \" -> \" + result.length + \" nodes; POST /flows (v\" + (st.apiV2 ? \"2\" : \"1\") + \", rev \" + (st.rev || \"-\") + \")\");\nnode.status({ text: \"Bezig met deployen \" + result.length + \" nodes\" + (report.length ? \" | \" + report.join(\" \") : \"\") });\n// uit3: huidige flows ALS TERUGVAL eerst wegschrijven ( rollback, los van de rev-conflictcheck)\nconst bdir = (c.backupDir || \"\").replace(/[\\/\\\\]+$/, \"\");\nconst bpfx = bdir ? bdir + \"/\" : \"\";\nconst snapStamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, \"-\");\nconst snapMsg = { payload: JSON.stringify(local), filename: bpfx + \"wp-preupdate-flows-\" + snapStamp + \".json\" };\nreturn [{\n    url: base + \"/flows\", method: \"POST\", headers: headers, payload: body,\n    _localCount: local.length, _newCount: result.length,\n    _orphanUiTabs: orphanUiTabs, _suspectTabs: suspectTabs\n}, null, snapMsg];",
+    "outputs": 3,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "wpu0023",
+    "type": "http request",
+    "z": "wpu-tab-0001",
+    "name": "POST /flows (atoom)",
+    "x": 3260,
+    "y": 720,
+    "wires": [
+      [
+        "wpu0031"
+      ]
+    ],
+    "method": "use",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": []
+  },
+  {
+    "id": "wpu0031",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] deploy-resultaat",
+    "x": 3580,
+    "y": 720,
+    "wires": [
+      [
+        "wpu067"
+      ]
+    ],
+    "func": "// [WP Update] resultaat van POST /flows\n// NB: na een geslaagde deploy start Node-RED de flows opnieuw; het kan zijn\n// dat dit bericht nooit aankomt. Controleer op [WP Home] het versienummer.\nif (msg.statusCode === 200 || msg.statusCode === 201 || msg.statusCode === 204 || msg.statusCode === 205) {\n    let text = \"Update geslaagd (gepland: \" + (msg._newCount || \"?\") + \" nodes)! De flows herstarten nu. Open [WP Home] om het nieuwe versienummer te controleren en ververs het dashboard.\";\n    if (msg._orphanUiTabs && msg._orphanUiTabs.length > 0) {\n        text += \" Let op: \" + msg._orphanUiTabs.length + \" oude dashboard-tabblad(en) uit een eerdere versie zijn blijven staan (\" + msg._orphanUiTabs.slice(0, 5).join(\", \") + (msg._orphanUiTabs.length > 5 ? \", ...\" : \"\") + \"); opruimen via Configuration Nodes indien leeg/dubbel.\";\n    }\n    if (msg._suspectTabs && msg._suspectTabs.length > 0) {\n        text += \" Waarschuwing: lokaal tabblad(en) met WP-naam niet herkend in de nieuwe package: \" + msg._suspectTabs.join(\", \") + \". Mogelijk hernoemd; controleer handmatig.\";\n    }\n    return { payload: text, topic: \"WP Update klaar\" };\n}\nif (msg.statusCode === 409) {\n    return { payload: \"Deploy geweigerd (409 rev-conflict): de flows zijn tussentijds gewijzigd. Druk opnieuw op [Controleer op update] en [UPDATE UITVOEREN].\", topic: \"WP Update fout\" };\n}\nreturn { payload: \"Deploy mislukt met status \" + msg.statusCode + \". De oude versie draait gewoon door. Volledige melding in de Node-RED debug/log.\", topic: \"WP Update fout\" };",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "wpu0040",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] fout",
+    "x": 4540,
+    "y": 160,
+    "wires": [
+      [
+        "wpu0009"
+      ],
+      [
+        "wpu0035"
+      ]
+    ],
+    "func": "// [WP Update] foutmeldingen naar status + toast\nnode.status({ text: \"Fout: \" + String(msg.payload).slice(0, 60) });\nnode.warn(\"[WP Update] \" + msg.payload);\nreturn [{ payload: String(msg.payload) }, msg];",
+    "outputs": 2,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "wpu0020",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] backup: alles uit global context",
+    "x": 380,
+    "y": 800,
+    "wires": [
+      [
+        "wpu0025"
+      ],
+      [
+        "wpu0047"
+      ]
+    ],
+    "func": "// [WP Update] instellingen backup: dump COMPLETE global context\n// (settings als F_RTC/F_CCC/F_SS, maar ook TOP*/kwh*/COP* historie: alles).\n// Eigen WPU_-state wordt overgeslagen: anders bevat elke backup de vorige\n// backup en groeien de bestanden onbeperkt. Download-token verversen.\n// uit1: bestand met tijdstempel (archief) | uit2: vaste latest-kopie (voor [Backup terugzetten])\nconst keys = global.keys() || [];\nconst dump = {};\nfor (const k of keys) {\n    if (k.indexOf(\"WPU_\") === 0) { continue; }\n    try { dump[k] = global.get(k); } catch (e) { /* skip niet-serialiseerbaar */ }\n}\nconst st = flow.get(\"WPU\") || {};\nconst c = flow.get(\"WPU_cfg\") || {};\nconst dir = (c.backupDir || \"\").replace(/[\\/\\\\]+$/, \"\");\nconst pfx = dir ? dir + \"/\" : \"\";\nconst ts = new Date().toISOString();\nconst stamp = ts.slice(0, 19).replace(/[:T]/g, \"-\");\nconst backup = {\n    meta: {\n        generated: ts,\n        flowVersion: st.currentVersion || \"onbekend\",\n        nodeRedFlow: \"HeishaMoNR [WP Update] settings-backup\",\n        nodeCount: Object.keys(dump).length\n    },\n    globalContext: dump\n};\nglobal.set(\"WPU_BACKUP\", backup);\nst.downloadToken = \"wp\" + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);\nst.downloadTokenTime = Date.now();\nflow.set(\"WPU\", st);\nconst payload = JSON.stringify(backup, null, 2);\nmsg.payload = payload;\nmsg.filename = pfx + \"wp-backup-\" + stamp + \".json\";\nnode.status({ text: \"Backup: \" + msg.filename });\nreturn [msg, { payload: payload, filename: pfx + \"wp-backup-latest.json\" }];\n",
+    "outputs": 2,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "wpu0025",
+    "type": "file",
+    "z": "wpu-tab-0001",
+    "name": "Schrijf backup weg",
+    "x": 700,
+    "y": 960,
+    "wires": [
+      [
+        "wpu0026"
+      ]
+    ],
+    "filename": "filename",
+    "filenameType": "msg",
+    "appendNewline": false,
+    "createDir": true,
+    "overwriteFile": "true"
+  },
+  {
+    "id": "wpu0026",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] backup klaar",
+    "x": 1020,
+    "y": 960,
+    "wires": [
+      [
+        "wpu065"
+      ]
+    ],
+    "func": "// [WP Update] backup geschreven: melding met bestandsnaam + downloadlink (met token)\nconst name = msg.filename || \"wp-backup.json\";\nconst st = flow.get(\"WPU\") || {};\nconst c = flow.get(\"WPU_cfg\") || {};\nconst tok = st.downloadToken ? \"?token=\" + st.downloadToken : \"\";\n// host afgeleid uit de Admin API URL (scheme://host:poort); het download-pad\n// zit op het basis-pad van de http-nodes (httpNodeRoot), niet op httpAdminRoot\nconst origin = String(c.adminBase || \"http://localhost:1880\").replace(/^(https?:\\/\\/[^\\/]+).*$/i, \"$1\");\nreturn { payload: \"Backup geschreven: \" + name + \" (en vaste kopie wp-backup-latest.json voor [Backup terugzetten]). Download: \" + origin + \"/wpupdate/backup\" + tok + \". Het token staat alleen in deze melding en is 24 uur geldig; zonder of verlopen token weigert de download.\", topic: \"WP Update backup\" };\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "wpu0027",
+    "type": "http in",
+    "z": "wpu-tab-0001",
+    "name": "GET /wpupdate/backup",
+    "x": 60,
+    "y": 1040,
+    "wires": [
+      [
+        "wpu0028"
+      ]
+    ],
+    "url": "/wpupdate/backup",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": ""
+  },
+  {
+    "id": "wpu0028",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] backup serveren",
+    "x": 380,
+    "y": 1040,
+    "wires": [
+      [
+        "wpu0029"
+      ]
+    ],
+    "func": "// [WP Update] download-endpoint: laatste backup serveren, alléén met token\n// http-nodes vallen NIET onder adminAuth; het token uit de backup-melding\n// vervangt de ontbrekende authenticatie.\nconst b = global.get(\"WPU_BACKUP\");\nconst st = flow.get(\"WPU\") || {};\nconst q = (msg.req && msg.req.query) || {};\nif (!b) {\n    msg.statusCode = 404;\n    msg.headers = { \"Content-Type\": \"application/json\" };\n    msg.payload = { error: \"Nog geen backup gemaakt. Druk eerst op [Backup settings].\" };\n    return msg;\n}\nconst tokVers = st.downloadToken && (!st.downloadTokenTime || (Date.now() - st.downloadTokenTime <= 24 * 60 * 60 * 1000));\nif (!tokVers || q.token !== st.downloadToken) {\n    msg.statusCode = 403;\n    msg.headers = { \"Content-Type\": \"application/json\" };\n    msg.payload = { error: \"Download-token ontbreekt, klopt niet of is verlopen (24 uur na [Backup settings]). Het actuele token staat in de melding direct daarna; maak eventueel een nieuwe [Backup settings].\" };\n    return msg;\n}\nmsg.payload = JSON.stringify(b, null, 2);\nmsg.headers = {\n    \"Content-Type\": \"application/json\",\n    \"Content-Disposition\": \"attachment; filename=\" + (b.meta && b.meta.generated ? \"wp-backup-\" + b.meta.generated.slice(0, 10) + \".json\" : \"wp-backup.json\")\n};\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "wpu0029",
+    "type": "http response",
+    "z": "wpu-tab-0001",
+    "name": "antwoord",
+    "x": 700,
+    "y": 1040,
+    "wires": [],
+    "statusCode": "",
+    "headers": {}
+  },
+  {
+    "id": "wpu000b",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] boot: velden vullen",
+    "x": 380,
+    "y": 80,
+    "wires": [
+      [
+        "wpu0004"
+      ],
+      [
+        "wpu0005"
+      ],
+      [
+        "wpu0058"
+      ]
+    ],
+    "func": "// [WP Update] boot: bewaarde configuratie terugzetten in de invoervelden\n// uit1 -> Admin API URL | uit2 -> user | uit3 -> back-up map\n// NB: het wachtwoordveld wordt bewust NIET voorgevuld: een voorgevuld veld\n// reist via de websocket mee naar elke dashboard-client. Het wachtwoord\n// staat veilig in de context; vul het veld alleen om het te wijzigen.\nconst c = flow.get(\"WPU_cfg\") || {};\nconst base = c.adminBase || \"http://localhost:1880\";\nreturn [\n    { payload: base, topic: \"adminBase\" },\n    { payload: c.user || \"\", topic: \"user\" },\n    { payload: c.backupDir || \"\", topic: \"backupDir\" }\n];\n",
+    "outputs": 3,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "wpu0011",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] config opslaan",
+    "x": 1020,
+    "y": 240,
+    "wires": [
+      []
+    ],
+    "func": "// [WP Update] invoervelden opslaan in flow context (persist)\nconst c = flow.get(\"WPU_cfg\") || {};\nif (msg.topic === \"adminBase\" && msg.payload) {\n    c.adminBase = String(msg.payload).trim().replace(/\\/+$/, \"\");\n}\nif (msg.topic === \"user\") { c.user = String(msg.payload || \"\").trim(); }\nif (msg.topic === \"pass\") { c.pass = msg.payload; }\nif (msg.topic === \"backupDir\") { c.backupDir = String(msg.payload || \"\").trim().replace(/[\\/\\\\]+$/, \"\"); }\nflow.set(\"WPU_cfg\", c);\n// bij gewijzigde inloggegevens het bewaarde token vergeten (het staat in\n// de WPU-state, niet in WPU_cfg: v4.4 en eerger ruimden alleen cfg.token op)\nif (msg.topic === \"adminBase\" || msg.topic === \"user\" || msg.topic === \"pass\") {\n    const st = flow.get(\"WPU\") || {};\n    if (st.token) { st.token = null; flow.set(\"WPU\", st); }\n}\nreturn null;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "wpu0017",
+    "type": "http request",
+    "z": "wpu-tab-0001",
+    "name": "GET repo-pagina (fallback)",
+    "method": "use",
+    "ret": "txt",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 2620,
+    "y": 640,
+    "wires": [
+      [
+        "wpu001a"
+      ]
+    ]
+  },
+  {
+    "id": "wpu001a",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] repo-scan (fallback)",
+    "func": "// [WP Update] fallback: geen version.json in de repo; scan de HTML van de repo-root.\n// De GitHub-API is rate-limited, de gewone pagina is gewoon beschikbaar.\n// Uitgangen zijn gelijk aan [WP Update] versies vergelijken.\nconst st = flow.get(\"WPU\") || {};\nconst cur = st.currentVersion || \"onbekend\";\nif (msg.statusCode !== 200 || typeof msg.payload !== \"string\") {\n    return [null, null, { payload: \"Kan de repo-inhoud niet lezen (status \" + msg.statusCode + \"). Check in de browser of github.com/edterbak/HeishaMoNR bereikbaar is; zie verder de FR voor version.json.\", topic: \"WP Update fout\" }];\n}\nconst re = /flows \\((\\d+\\.\\d+\\.\\d+) stable\\)\\.json/g;\nlet best = null; let m;\nwhile ((m = re.exec(msg.payload)) !== null) {\n    const v = m[1];\n    if (!best || isNewer(best, v)) { best = v; }\n}\nif (!best) {\n    return [null, null, { payload: \"Geen \\\"flows (X.Y.Z stable).json\\\" gevonden in de repo-root. Is de naamgeving bij edterbak gewijzigd? Meld het.\", topic: \"WP Update fout\" }];\n}\nconst enc = encodeURI(\"flows (\" + best + \" stable).json\");\nst.latest = {\n    version: best,\n    flowUrl: \"https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/\" + enc,\n    notes: \"(via repo-scan)\",\n    checkedAt: Date.now()\n};\nflow.set(\"WPU\", st);\nconst isNew = isNewer(cur, best);\nif (isNew) {\n    return [ { payload: cur }, { payload: best + \" (update!)\" },\n        { payload: \"Update beschikbaar: \" + best + \" (via repo-scan). Maak eerst een [Backup settings], druk daarna op [UPDATE UITVOEREN].\", topic: \"WP Update\" } ];\n}\nreturn [ { payload: cur }, { payload: best },\n    { payload: \"Je draait al de nieuwste versie (\" + cur + \").\", topic: \"WP Update\" } ];\n\nfunction isNewer(a, b) {\n    if (!a || a === \"onbekend\") { return true; }\n    const pa = String(a).split(\".\").map(Number);\n    const pb = String(b).split(\".\").map(Number);\n    for (let i = 0; i < 3; i++) {\n        const x = pa[i] || 0, y = pb[i] || 0;\n        if (y > x) { return true; }\n        if (y < x) { return false; }\n    }\n    return false;\n}",
+    "outputs": 3,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 2940,
+    "y": 640,
+    "wires": [
+      [
+        "wpu0007"
+      ],
+      [
+        "wpu0008"
+      ],
+      [
+        "wpu063"
+      ]
+    ]
+  },
+  {
+    "id": "wpu0047",
+    "type": "file",
+    "z": "wpu-tab-0001",
+    "name": "Schrijf latest-kopie",
+    "x": 700,
+    "y": 880,
+    "wires": [
+      []
+    ],
+    "filename": "filename",
+    "filenameType": "msg",
+    "appendNewline": false,
+    "createDir": true,
+    "overwriteFile": "true"
+  },
+  {
+    "id": "wpu0048",
+    "type": "ui_button",
+    "z": "wpu-tab-0001",
+    "name": "Backup terugzetten",
+    "x": 60,
+    "y": 1280,
+    "wires": [
+      [
+        "wpu0050"
+      ]
+    ],
+    "group": "wpu-ui-grp",
+    "order": 3,
+    "width": 4,
+    "height": 1,
+    "passthru": false,
+    "label": "Backup terugzetten",
+    "tooltip": "Leest de laatste backup (wp-backup-latest.json) en zet die na bevestiging terug in de global context. Werkt ook na een herstart van Node-RED, want hij leest van schijf.",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "fa-undo",
+    "payload": "",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str"
+  },
+  {
+    "id": "wpu0049",
+    "type": "ui_button",
+    "z": "wpu-tab-0001",
+    "name": "Bevestig terugzetten",
+    "x": 60,
+    "y": 1440,
+    "wires": [
+      [
+        "wpu0053"
+      ]
+    ],
+    "group": "wpu-ui-grp",
+    "order": 4,
+    "width": 4,
+    "height": 1,
+    "passthru": false,
+    "label": "Bevestig terugzetten",
+    "tooltip": "Past de geïnspecteerde backup toe op de global context. Maakt eerst een veiligheidskopie (snapshot) van de huidige stand, dus het herstel zelf is ook weer omkeerbaar.",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "fa-check",
+    "payload": "",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str"
+  },
+  {
+    "id": "wpu0050",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] restore: lees backup",
+    "x": 380,
+    "y": 1280,
+    "wires": [
+      [
+        "wpu0051"
+      ]
+    ],
+    "outputs": 1,
+    "func": "// [WP Update] restore fase 1: laatste backup-bestand lezen\n// Leest van schijf (wp-backup-latest.json, bij elke [Backup settings] ververst),\n// dus dit werkt ook na een herstart van Node-RED. Optioneel back-up map-veld\n// mee (in de Docker-container: /data, zodat de bestanden de container overleven).\nconst c = flow.get(\"WPU_cfg\") || {};\nconst dir = (c.backupDir || \"\").replace(/[\\/\\\\]+$/, \"\");\nconst pfx = dir ? dir + \"/\" : \"\";\nnode.status({ text: \"Lees \" + pfx + \"wp-backup-latest.json...\" });\nreturn { payload: \"\", filename: pfx + \"wp-backup-latest.json\" };\n"
+  },
+  {
+    "id": "wpu0051",
+    "type": "file in",
+    "z": "wpu-tab-0001",
+    "name": "Lees laatste backup",
+    "x": 700,
+    "y": 1280,
+    "wires": [
+      [
+        "wpu0052"
+      ]
+    ],
+    "filename": "filename",
+    "filenameType": "msg",
+    "format": "utf8",
+    "chunk": false,
+    "sendError": true,
+    "encoding": "none",
+    "output": "str"
+  },
+  {
+    "id": "wpu0052",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] restore: inspecteer backup",
+    "x": 1020,
+    "y": 1280,
+    "wires": [
+      [
+        "wpu068"
+      ],
+      [
+        "wpu069"
+      ]
+    ],
+    "outputs": 2,
+    "func": "// [WP Update] restore fase 2: backup-bestand inspecteren\n// uit1: bevestigingsverzoek | uit2: fout\nlet b = null;\ntry { b = JSON.parse(String(msg.payload)); } catch (e) { b = null; }\nif (!b || typeof b !== \"object\" || !b.globalContext || typeof b.globalContext !== \"object\") {\n    return [null, { payload: \"Geen geldig backup-bestand gevonden (wp-backup-latest.json). Draai eerst [Backup settings] en probeer opnieuw, of herstel handmatig via het downloadbare bestand.\", topic: \"WP Update fout\" }];\n}\nconst n = Object.keys(b.globalContext).length;\nconst gen = (b.meta && b.meta.generated) ? b.meta.generated.slice(0, 19).replace(\"T\", \" \") : \"onbekend\";\nconst fv = (b.meta && b.meta.flowVersion) ? b.meta.flowVersion : \"onbekend\";\nflow.set(\"WPU_restore\", { backup: b, keys: n, generated: gen });\nnode.status({ text: \"Inspectie: \" + n + \" keys (\" + gen + \")\" });\nreturn [{ payload: \"Backup geïnspecteerd: \" + n + \" instellingen-keys, gemaakt \" + gen + \" (flow \" + fv + \"). Druk [Bevestig terugzetten] om te herstellen.\", topic: \"WP Update restore\" }, null];\n"
+  },
+  {
+    "id": "wpu0053",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] restore: snapshot huidige stand",
+    "x": 380,
+    "y": 1440,
+    "wires": [
+      [
+        "wpu0054"
+      ],
+      [
+        "wpu070"
+      ]
+    ],
+    "outputs": 2,
+    "func": "// [WP Update] restore fase 3: eerst veiligheidskopie van de HUIDIGE stand,\n// daarna pas toepassen. Zo is het herstel zelf ook omkeerbaar.\n// uit1 -> schrijf snapshot | uit2 -> fout\nconst pend = flow.get(\"WPU_restore\");\nif (!pend || !pend.backup) {\n    return [null, { payload: \"Niets te bevestigen: druk eerst op [Backup terugzetten] om een backup te inspecteren.\", topic: \"WP Update fout\" }];\n}\nconst keys = global.keys() || [];\nconst dump = {};\nfor (const k of keys) {\n    if (k.indexOf(\"WPU_\") === 0) { continue; }\n    try { dump[k] = global.get(k); } catch (e) { /* skip niet-serialiseerbaar */ }\n}\nconst ts = new Date().toISOString();\nconst snap = {\n    meta: {\n        generated: ts,\n        nodeRedFlow: \"HeishaMoNR [WP Update] pre-restore snapshot\",\n        nodeCount: keys.length\n    },\n    globalContext: dump\n};\nconst stamp = ts.slice(0, 19).replace(/[:T]/g, \"-\");\nnode.status({ text: \"Maak snapshot voor herstel...\" });\nconst c = flow.get(\"WPU_cfg\") || {};\nconst dir = (c.backupDir || \"\").replace(/[\\/\\\\]+$/, \"\");\nconst pfx = dir ? dir + \"/\" : \"\";\nreturn [{ payload: JSON.stringify(snap, null, 2), filename: pfx + \"wp-prerestore-snapshot-\" + stamp + \".json\" }, null];\n"
+  },
+  {
+    "id": "wpu0054",
+    "type": "file",
+    "z": "wpu-tab-0001",
+    "name": "Schrijf pre-restore snapshot",
+    "x": 700,
+    "y": 1440,
+    "wires": [
+      [
+        "wpu0055"
+      ]
+    ],
+    "filename": "filename",
+    "filenameType": "msg",
+    "appendNewline": false,
+    "createDir": true,
+    "overwriteFile": "true"
+  },
+  {
+    "id": "wpu0055",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] restore: pas toe",
+    "x": 1020,
+    "y": 1440,
+    "wires": [
+      [
+        "wpu071"
+      ],
+      [
+        "wpu072"
+      ]
+    ],
+    "outputs": 2,
+    "func": "// [WP Update] restore fase 4: backup terugzetten in global context\n// Samenvoegend: alle keys uit de backup overschrijven de huidige waarden;\n// keys die er nu extra zijn blijven staan (die bestonden bij de backup nog niet).\n// uit1: melding | uit2: fout\nconst pend = flow.get(\"WPU_restore\");\nif (!pend || !pend.backup || !pend.backup.globalContext) {\n    return [null, { payload: \"Interne fout: geïnspecteerde backup ontbreekt. Opnieuw: [Backup terugzetten].\", topic: \"WP Update fout\" }];\n}\n// positieve bevestiging dat het pre-restore-snapshot daadwerkelijk geschreven is:\n// de file-node zet de msg alléén door na een geslaagde schrijfactie (fouten gaan\n// naar de catch-node). Geen snapshot-bestandsnaam = geen bevestiging: NIET herstellen.\nif (typeof msg.filename !== \"string\" || msg.filename.indexOf(\"wp-prerestore-snapshot\") === -1) {\n    return [null, { payload: \"Herstel gestopt: er is geen bevestiging dat het pre-restore-snapshot is weggeschreven (eventuele schrijffout verschijnt apart in de fout-melding). Niets teruggezet; probeer opnieuw.\", topic: \"WP Update fout\" }];\n}\nconst snap = msg.filename;\nlet count = 0;\nfor (const k of Object.keys(pend.backup.globalContext)) {\n    if (k.indexOf(\"WPU_\") === 0) { continue; } // eigen state (WPU_BACKUP e.d.) niet terugzetten\n    try { global.set(k, pend.backup.globalContext[k]); count++; } catch (e) { /* skip */ }\n}\nflow.set(\"WPU_restore\", null);\nnode.status({ text: \"Hersteld: \" + count + \" keys\" });\nnode.warn(\"[WP Update] restore: \" + count + \" keys teruggezet; snapshot van oude stand: \" + snap);\nreturn [{ payload: \"Hersteld: \" + count + \" instellingen-keys uit backup van \" + pend.generated + \". Veiligheidskopie van de oude stand: \" + snap + \". Controleer [WP Home] en herstart eventueel de WP-flow.\", topic: \"WP Update restore\" }, null];\n"
+  },
+  {
+    "id": "wpu0056",
+    "type": "catch",
+    "z": "wpu-tab-0001",
+    "name": "Fout bij bestanden (lezen backup / schrijven snapshot)",
+    "x": 700,
+    "y": 1600,
+    "wires": [
+      [
+        "wpu073"
+      ]
+    ],
+    "scope": [
+      "wpu0025",
+      "wpu0047",
+      "wpu0051",
+      "wpu0054",
+      "wpu0057"
+    ],
+    "uncaught": false
+  },
+  {
+    "id": "wpu060",
+    "type": "link out",
+    "z": "wpu-tab-0001",
+    "name": "fout: admin-login",
+    "links": [
+      "wpu074"
+    ],
+    "x": 1020,
+    "y": 800,
+    "wires": []
+  },
+  {
+    "id": "wpu061",
+    "type": "link out",
+    "z": "wpu-tab-0001",
+    "name": "fout: flows lezen",
+    "links": [
+      "wpu074"
+    ],
+    "x": 1660,
+    "y": 640,
+    "wires": []
+  },
+  {
+    "id": "wpu062",
+    "type": "link out",
+    "z": "wpu-tab-0001",
+    "name": "melding: versie",
+    "links": [
+      "wpu075"
+    ],
+    "x": 2300,
+    "y": 640,
+    "wires": []
+  },
+  {
+    "id": "wpu063",
+    "type": "link out",
+    "z": "wpu-tab-0001",
+    "name": "melding: repo-scan",
+    "links": [
+      "wpu075"
+    ],
+    "x": 3260,
+    "y": 640,
+    "wires": []
+  },
+  {
+    "id": "wpu064",
+    "type": "link out",
+    "z": "wpu-tab-0001",
+    "name": "fout: download",
+    "links": [
+      "wpu074"
+    ],
+    "x": 2300,
+    "y": 800,
+    "wires": []
+  },
+  {
+    "id": "wpu065",
+    "type": "link out",
+    "z": "wpu-tab-0001",
+    "name": "melding: backup",
+    "links": [
+      "wpu075"
+    ],
+    "x": 1340,
+    "y": 960,
+    "wires": []
+  },
+  {
+    "id": "wpu066",
+    "type": "link out",
+    "z": "wpu-tab-0001",
+    "name": "fout: merge/deploy",
+    "links": [
+      "wpu074"
+    ],
+    "x": 3260,
+    "y": 800,
+    "wires": []
+  },
+  {
+    "id": "wpu067",
+    "type": "link out",
+    "z": "wpu-tab-0001",
+    "name": "melding: deploy",
+    "links": [
+      "wpu075"
+    ],
+    "x": 3580,
+    "y": 800,
+    "wires": []
+  },
+  {
+    "id": "wpu068",
+    "type": "link out",
+    "z": "wpu-tab-0001",
+    "name": "melding: inspectie",
+    "links": [
+      "wpu075"
+    ],
+    "x": 1340,
+    "y": 1280,
+    "wires": []
+  },
+  {
+    "id": "wpu069",
+    "type": "link out",
+    "z": "wpu-tab-0001",
+    "name": "fout: inspectie",
+    "links": [
+      "wpu074"
+    ],
+    "x": 1340,
+    "y": 1360,
+    "wires": []
+  },
+  {
+    "id": "wpu070",
+    "type": "link out",
+    "z": "wpu-tab-0001",
+    "name": "fout: snapshot",
+    "links": [
+      "wpu074"
+    ],
+    "x": 380,
+    "y": 1520,
+    "wires": []
+  },
+  {
+    "id": "wpu071",
+    "type": "link out",
+    "z": "wpu-tab-0001",
+    "name": "melding: restore",
+    "links": [
+      "wpu075"
+    ],
+    "x": 1340,
+    "y": 1440,
+    "wires": []
+  },
+  {
+    "id": "wpu072",
+    "type": "link out",
+    "z": "wpu-tab-0001",
+    "name": "fout: restore",
+    "links": [
+      "wpu074"
+    ],
+    "x": 1340,
+    "y": 1520,
+    "wires": []
+  },
+  {
+    "id": "wpu073",
+    "type": "link out",
+    "z": "wpu-tab-0001",
+    "name": "fout: bestandslezing",
+    "links": [
+      "wpu074"
+    ],
+    "x": 700,
+    "y": 1680,
+    "wires": []
+  },
+  {
+    "id": "wpu074",
+    "type": "link in",
+    "z": "wpu-tab-0001",
+    "name": "fout-meldingen",
+    "links": [
+      "wpu005b",
+      "wpu060",
+      "wpu061",
+      "wpu064",
+      "wpu066",
+      "wpu069",
+      "wpu070",
+      "wpu072",
+      "wpu073"
+    ],
+    "x": 4220,
+    "y": 160,
+    "wires": [
+      [
+        "wpu0040"
+      ]
+    ]
+  },
+  {
+    "id": "wpu075",
+    "type": "link in",
+    "z": "wpu-tab-0001",
+    "name": "meldingen & status",
+    "links": [
+      "wpu062",
+      "wpu063",
+      "wpu065",
+      "wpu067",
+      "wpu068",
+      "wpu071"
+    ],
+    "x": 4220,
+    "y": 320,
+    "wires": [
+      [
+        "wpu0035",
+        "wpu0009"
+      ]
+    ]
+  },
+  {
+    "id": "wpu0057",
+    "type": "file",
+    "z": "wpu-tab-0001",
+    "name": "Schrijf pre-update flow-snapshot",
+    "x": 2940,
+    "y": 800,
+    "wires": [
+      []
+    ],
+    "filename": "filename",
+    "filenameType": "msg",
+    "appendNewline": false,
+    "createDir": true,
+    "overwriteFile": "true"
+  },
+  {
+    "id": "wpu0058",
+    "type": "ui_text_input",
+    "z": "wpu-tab-0001",
+    "name": "Back-up map (optioneel)",
+    "x": 700,
+    "y": 400,
+    "wires": [
+      [
+        "wpu0011"
+      ]
+    ],
+    "group": "wpu-ui-grp",
+    "order": 12,
+    "width": 4,
+    "height": 1,
+    "passthru": false,
+    "mode": "text",
+    "delay": 300,
+    "label": "Back-up map (optioneel)",
+    "tooltip": "Map waarin de back-up- en snapshot-bestanden worden geschreven en gelezen. In een Docker-container: /data (de Node-RED datamap), anders staan de bestanden in de werkmap van het proces en gaan ze verloren bij hercreatie van de container. Leeg laten = werkmap van Node-RED.",
+    "topic": "backupDir",
+    "sendOnBlur": true,
+    "className": "",
+    "topicType": "str"
+  },
+  {
+    "id": "wpu0059",
+    "type": "catch",
+    "z": "wpu-tab-0001",
+    "name": "fout: netwerk (aanvragen)",
+    "scope": [
+      "wpu0012",
+      "wpu0013",
+      "wpu0016",
+      "wpu0017",
+      "wpu0018",
+      "wpu0022",
+      "wpu0023"
+    ],
+    "uncaught": false,
+    "x": 700,
+    "y": 1760,
+    "wires": [
+      [
+        "wpu005a"
+      ]
+    ]
+  },
+  {
+    "id": "wpu005a",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] netwerkfout leesbaar",
+    "func": "// [WP Update] netwerkfouten leesbaar naar de fout-hub\n// http request gooit bij DNS-/verbindingsfouten GEEN statusCode maar een error;\n// zonder deze vang verdwijnen die stil in de debug-zijbalk.\nconst em = (msg.error && msg.error.message) ? String(msg.error.message) : (\"HTTP-status \" + ((msg.statusCode !== undefined && msg.statusCode !== null) ? msg.statusCode : \"onbekend\"));\nnode.status({ text: \"Netwerkfout: \" + em.slice(0, 50) });\nreturn { payload: \"Netwerkfout: \" + em + \". Controleer of Node-RED internetverbinding heeft (DNS) en of de Admin API URL klopt; daarna opnieuw drukken.\", topic: \"WP Update fout\" };",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 700,
+    "y": 1840,
+    "wires": [
+      [
+        "wpu005b"
+      ]
+    ]
+  },
+  {
+    "id": "wpu005b",
+    "type": "link out",
+    "z": "wpu-tab-0001",
+    "name": "fout: netwerk",
+    "links": [
+      "wpu074"
+    ],
+    "x": 700,
+    "y": 1920,
+    "wires": []
+  }
+]
