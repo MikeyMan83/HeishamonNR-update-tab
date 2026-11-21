@@ -1,0 +1,80 @@
+# Changelog
+
+All dates are 21 Nov 2026: this tab was built, reviewed and hardened in one day. Key facts per version: the button behaviour and merge rules are stable since v4.6; earlier versions are mostly of historical interest.
+
+## v4.7 (current, 69 nodes, 127/127 checks)
+
+Third external review (Gemini) processed, every claim verified first. Most reported bugs turned out to refer to the v4.4 code and were already fixed in v4.5/v4.6; the catch-scope claim was partly valid: the backup write actions were indeed missing. Five real fixes:
+
+- **Readable network errors**: all seven http request nodes now feed a dedicated catch chain (`wpu0059` catch -> `wpu005a` "network error readable" -> `wpu005b` link out to the error hub). DNS and connection errors carry no statusCode and previously disappeared silently; the Node-RED runtime puts `msg.error = { message, source, code }` on the catch message (verified against the 5.x runtime source, Flow.js handleError + 21-httprequest.js), which the chain surfaces as "Network error: ...". Nuance from the same source: without the `senderr` option, http request also passes the error down the normal wire (statusCode = err.code), so a second, generic error message can follow alongside; both go to the toast, nothing disappears silently.
+- The file catch node (`wpu0056`) now covers all five file actions, including the two backup writes that were missing.
+- The download link in the backup toast is derived from the Admin API URL (scheme://host:port) instead of a hardcoded `http://<node-red>:1880`.
+- Dutch texts: fixed one typo and the missing diacritics (Geinstalleerd -> Geïnstalleerd, geinspecteerd -> geïnspecteerd) in node names, labels, tooltips and code.
+- Own find on top of the review: the suspect-tab warning flagged the "WP Update" tab itself on every merge (it always matched the /^WP / rule and never appears in the package tab list); "WP Personal" and "WP Update" are now both exempted (rule `/^WP (Personal|Update)$/`).
+- Gemini's HTML-scan truncation claim was live-tested and is not a real problem today (repo root: 9 files, the 234 KB HTML payload contains all flow-json names, the scan finds 26.5.1); documented as an edge case in the README. The self-update question (Ed shipping the tab inside the package) is covered in the README edge cases.
+
+Suite fully rebuilt: 127/127 (S0-S15, including real 26.3.1/26.5.1 merges with the updater tab itself in localFlows; network-error scenarios, catch scopes, host derivation, diacritics-correct texts, all file actions enqueued).
+
+## v4.6 (66 nodes, 101/101 checks)
+
+Second external review (ChatGPT) processed, verified first. The reported "critical" (unauthenticated download endpoint) had already been addressed in v4.5 by the one-time download token; the described c.token bug was v4.4 code, already fixed in v4.5. Real new improvements:
+
+- Download token TTL of 24 hours plus an expiry message.
+- Proactive admin-token refresh after 1 hour (the token was previously only refreshed reactively on a 401).
+- **Download integrity**: the changelog node ("Line - Changelog") inside the downloaded file must report the expected version; a mismatch refuses the update before palette check and merge (wrong file or forgotten bump = refused, nothing changed).
+- Only X.Y.Z versions accepted from version.json (prerelease strings previously compared as NaN and produced a false "newer").
+- The restore now requires a positive write confirmation of the pre-restore snapshot (the file node only outputs after a successful write; v4.6 additionally checks that confirmation explicitly). Without it, nothing is restored.
+- The doomedLocalTabs label safety net now works per label: on an id-stable release the package tab already matches by id and an extra, personal tab with the coincidentally same label stays; on a genuine id-rebuild (no id match on that label at all) the net still cleans up everything.
+
+Deliberately documented instead of changed: the backup scope (default global context store only) and the meaning of "atomic" (the deploy operation; the pre-update snapshots are the recovery mechanism).
+
+## v4.5 (66 nodes, 119/119 checks)
+
+First external review processed, both blockers verified against the real editor-api source (4.0.9 and 5.0.10, `lib/admin/nodes.js`) before fixing:
+
+- **Blocker 1**: `GET /nodes` only returns JSON with `Accept: application/json`; without that header an HTML config blob comes back and the palette check would have reported every type as missing. Fixed.
+- **Blocker 2**: tab/subflow/group/junction and subflow instances are flow-config types, not palette types; the palette check wrongly demanded them, so any package with a tab failed by definition. Fixed: only sets without err and with enabled=true count.
+- One review claim turned out to be wrong (the /nodes response is a flat list of node sets, not nested modules); the new parser supports both shapes defensively.
+- Further fixes: the password was echoed as a predefined value to every dashboard client on boot (removed; the field stays empty, password only in context); `WPU_BACKUP` nested itself into every subsequent backup (now skipped in backup, pre-restore snapshot and restore); optional Backup directory field (/data in Docker, because the container working dir is not persistent); 401 handling plus token invalidation on changed credentials (the token was cleared in the wrong context); env merge of the local global-config; a pre-update flow snapshot before every deploy; a freshness check on the last Check (older than 1 hour refuses); flowUrl pinned to `https://raw.githubusercontent.com/edterbak/HeishaMoNR/...`; one-time download token on `/wpupdate/backup` (http in nodes sit outside adminAuth).
+- Deliberately not adopted: a second confirmation click on Update now (the atomic operation, rev check, freshness check and snapshot cover the same risk without an extra click).
+
+## v4.4.2 (64 nodes, 87/87 checks)
+
+Complete code re-verification round ("check with vibe code"): the whole suite was rebuilt and run at once against the real 26.3.1/26.5.1 packages plus a live GitHub repo scan. The layout check switched to an honest Node-RED polyline model (horizontal, midgap vertical, horizontal, real 30px node boxes) instead of straight lines; it found 3 avoidable wire crossings, all fixed (the scan error link as a flat stub at scan-lane height, the toast as a hook directly under the error hub, the status lane kept free). Remaining: 0 node overlaps, 0 grazes, exactly 1 topologically unavoidable crossing at the two version fields (a fan-in shared by the check and scan arms). Scaffold rule generalized (same column, down on the 80px grid, no node in between).
+
+## v4.4.1 (64 nodes)
+
+Live 404 fixed on Update now, diagnosed in two steps: the container can reach raw.githubusercontent.com directly (HTTP 200, 2,956,342 bytes), so it was not a network issue; the cause was **double percent-encoding inside the flow**: the repo scan stores the raw URL already percent-encoded and the apply route applied encodeURI() again, turning %20 into %2520, a URL to a non-existing file (live verified: the double-encoded URL returns exactly "404: Not Found"). The reason Check for update did work: the check route never fetches that URL. Fix: flowUrl is normalized on storage (spaces -> %20, existing %XX intact, loose % escaped) and used unencoded on download; the download error message now includes the status code AND the exact URL used. Verified with S19 (11/11).
+
+## v4.4 (64 nodes, 115/115 checks)
+
+- All spaghetti wires to the error and notification hubs replaced by link nodes (14x link out to the error hub wpu074 and the notifications hub wpu075, 2x link in), exactly how the package itself does it (756 link nodes in 26.5.1).
+- Uniform grid: columns at x = 60 + 320*k, lanes at multiples of 80, with fixed reading rules (check main lane, token arm, scan arm, update chain, backup and restore lanes, report corner top-right). Every wire runs left to right; the link outs sit as hook-backs directly under their source node. Result: 0 overlap, 0 grazes, 0 crossings (59 wires).
+
+## v4.3 (48 nodes, 109/109 checks)
+
+Second live smoke test ("errors gone, still messy") led to a topological layout: longest-path layers plus barycenter vertical placement instead of manual columns; every wire strictly left to right, hubs at the center of mass of their sources, column spacing larger than column width, 20px grid. Vertical order then optimized (hill-climb + annealing) down to 4 wire grazes on 62 wires and 19 crossings.
+
+## v4.2 (48 nodes)
+
+First live smoke test in a real Node-RED (5.0.1); two causes of editor warnings found and fixed:
+
+- **File nodes "not properly configured"**: a file/file in node with `filenameType: "msg"` expects the msg property NAME in `filename` (convention: `"filename"`); an empty string makes the editor node invalid and the runtime throws "Invalid property expression: empty string". Fixed on all four file nodes (verified against 10-file.html/js of both 3.1.x and 5.0.1: identical model).
+- **ui_toast flagged**: HeishaMoNR runs on node-red-dashboard DB1 (16x ui_toast + ui_ui_control in the package), not on FlowFuse Dashboard-2. DB1 requires an `ok` value (default "OK") on the definition side and the toast node has 0 outputs. Fixed: `ok: "OK"`, outputs/wires removed.
+- Complete re-layout (48 nodes, grid-aligned, no overlap, chains per lane).
+
+## v4.0/v4 (64 nodes)
+
+- **Restore chain added**: Restore reads the fixed `wp-backup-latest.json` copy (which Backup settings writes next to the timestamped archive) from disk, inspects it (keys/timestamp/version) and asks for a second click; on confirm it first writes a pre-restore snapshot of the current state and only then restores (per key, merging: extra current keys stay). The restore itself is reversible and works after a Node-RED restart because it reads from disk. A catch node handles read errors.
+- **Credentials**: in addition to the UI fields (password masked, mode password) the environment variables `WPU_ADMIN_USER`/`WPU_ADMIN_PASS` (docker/settings.js); UI fields win; the password then never sits in the editor or context.
+- **Orphan report only on a real rebuild**: rebuildDetected = label match without id match (on id-stable merges the doomed-local-tabs list was also filled via label, but label and id match coincide; false "Home" warning fixed).
+
+## v3 (64 nodes)
+
+Initial complete version of the tab (5 buttons + 18 function nodes + http/file chain + link hub wiring), with the three rebuild safety nets:
+
+- Flow tabs are additionally recognized by LABEL (doomedLocalTabs): on a full id-rebuild, old package tabs are still cleaned up and reported.
+- Broker rescue: a package referencing a placeholder broker ("x.x.x.x") that does not exist locally gets all its mqtt references rewritten to the locally most-used broker.
+- Orphan ui_tabs and suspect local WP-named tabs are REPORTED in the success toast instead of silently deleted; an own ui_tab with a generic name ("Home", "Settings") is guaranteed to survive.
+
+The merge core and version chain were proven against the real 26.3.1 and 26.5.1 packages; the Admin API contract was verified against the editor-api source. Versioned smoke tests and three external reviews (each claim verified before fixing) followed the same day; see the README for the honest edge cases and the current test report.
