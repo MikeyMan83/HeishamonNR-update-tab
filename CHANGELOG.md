@@ -2,7 +2,16 @@
 
 All dates are 21 Nov 2026: this tab was built, reviewed and hardened in one day. Key facts per version: the button behaviour and merge rules are stable since v4.6; earlier versions are mostly of historical interest.
 
-## v4.10.1 (current, 76 nodes)
+## v4.10.2 (current, 76 nodes)
+
+Post-v4.10 sweep (source-verified, no live bug): the v4.10 flow-download link was wired asymmetrically and `wpu0082` (link out) was missing its `wires: []`. Verified against the Node-RED 5.0.1 sources:
+
+- **Runtime was never broken**: `@node-red/runtime` 5.0.1 `lib/flows/util.js` `parseConfig` builds link wiring as the union of both sides' `links` arrays and then computes `n.wires = [targets]` on each link out, so the out-side `links: ["wpu076"]` alone already delivered the flow-download toast.
+- **The editor self-heals the asymmetry on import** (nodes/core/common/60-link.html, `onAdd` on both link types pushes missing ids into the opposite node's `links`), but a symmetric export is what Node-RED itself always writes, and it keeps editor diffs clean after a re-import and re-deploy.
+- Fix: `wpu076.links` now includes `wpu0082` (next to `wpu065`) and `wpu0082` carries `wires: []` like every other link out.
+- Harness: new structural section (T17) asserts every link out/in pair is editor-symmetric and every link out has `wires: []` -> **122/122**.
+
+## v4.10.1 (76 nodes)
 
 Live-use finding (the backup link "didn't download anything" when clicked): node-red-dashboard's toast handler HTML-escapes every non-raw message (main.js show-toast: `temp.textContent = msg.message; msg.message = temp.innerHTML`), so the download URL in the toast was plain text, not a hyperlink. Fix, verified against the DB1 source:
 
