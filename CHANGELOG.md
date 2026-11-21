@@ -2,7 +2,15 @@
 
 All dates are 21 Nov 2026: this tab was built, reviewed and hardened in one day. Key facts per version: the button behaviour and merge rules are stable since v4.6; earlier versions are mostly of historical interest.
 
-## v4.9 (current, 70 nodes)
+## v4.10 (current, 76 nodes)
+
+New feature: **Download flow** button (`wpu0080`). It runs a fresh `GET /flows` via the Admin API (phase `flowdl` through `wpu0010`, loopback/`WPU_ADMIN_BASE` as always), `wpu0015` gained a 4th output for this phase, and `wpu0081` stores the dump (`WPU_flowDump`, memory store only) plus a fresh `fl…` token (`WPU_flowDlToken`, memory, 24h) and emits a **private** toast (`wpu0082` -> `wpu076`/`wpu0076`, `sendall:false` + `msg.socketid` + `_client`, per the v4.8.1 DB1 finding) with a relative link `/wpupdate/flows?token=…`. New endpoint `wpu0083`/`wpu0084`/`wpu0085`: 404 before the first click, 403 without/wrong/expired token, 200 + `attachment; filename=flows-<date>.json` with a valid token — same protection model as `/wpupdate/backup`, since `http in` nodes sit outside adminAuth.
+
+Credential note (live-verified on Node-RED 5.0.10): `GET /flows` strips credential-store secrets (a config node posted with `credentials: {user, pass}` comes back without them), but legacy plaintext node properties are included — hence the token gate. Documented in the README.
+
+Validation: harness extended to **117/117** green (`node test/harness.js`: 99 v4.9 checks + 18 new — flowdl routing, dump/token memory-only, socketid passthrough, endpoint 404/403/403-expired/200, token value absent from the served payload); live loopback deploy of the merged tab (76 wpu nodes via `POST /flows`, endpoint 404 probes, `/wpupdate/backup` unaffected). Merged on top of v4.9 (merge-statistics reporting untouched).
+
+## v4.9 (70 nodes)
 
 Feedback improvement from live use (first real 26.3.1 -> 26.5.1 update on the target Synology): "Update geslaagd (gepland: N nodes)" did not say WHICH nodes actually changed. Now it does:
 

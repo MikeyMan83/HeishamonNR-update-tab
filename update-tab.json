@@ -4,7 +4,7 @@
     "type": "tab",
     "label": "WP Update",
     "disabled": false,
-    "info": "[WP Update] flow-tab voor HeishaMoNR (PR-materiaal).\nAutomatische versie-check, settings-backup EN -restore (volledige global context van/naar bestand, download-endpoint),\nplus een-klik atomaire update via de Node-RED Admin API (id-merge met rebuild-vingnetten).\n\nWerkt met version.json in de repo-root; ontbreekt die, dan volgt automatisch een repo-scan van de gewone GitHub-pagina.\nAdmin-inlog: user/wachtwoord via de dashboard-velden (wachtwoord sessie-only in geheugen, nooit op disk) of via de omgevingsvariabelen WPU_ADMIN_USER / WPU_ADMIN_PASS. De Admin API URL wordt server-side bepaald (loopback 127.0.0.1:1880, of WPU_ADMIN_BASE bij een niet-standaard poort of httpAdminRoot) en staat dus niet in een dashboard-veld.\nNa de update meldt de tab hoeveel nodes nieuw/bijgewerkt/verwijderd/ongewijzigd zijn (aantallen in de toast; volledige namen-lijst in de Node-RED-log).\nZie de meegeleverde README voor installatie, gedrag en randvoorwaarden.",
+    "info": "[WP Update] flow-tab voor HeishaMoNR (PR-materiaal).\nAutomatische versie-check, settings-backup EN -restore (volledige global context van/naar bestand, download-endpoint),\nplus een-klik atomaire update via de Node-RED Admin API (id-merge met rebuild-vingnetten).\n\nWerkt met version.json in de repo-root; ontbreekt die, dan volgt automatisch een repo-scan van de gewone GitHub-pagina.\nAdmin-inlog: user/wachtwoord via de dashboard-velden (wachtwoord sessie-only in geheugen, nooit op disk) of via de omgevingsvariabelen WPU_ADMIN_USER / WPU_ADMIN_PASS. De Admin API URL wordt server-side bepaald (loopback 127.0.0.1:1880, of WPU_ADMIN_BASE bij een niet-standaard poort of httpAdminRoot) en staat dus niet in een dashboard-veld.\nNa de update meldt de tab hoeveel nodes nieuw/bijgewerkt/verwijderd/ongewijzigd zijn (aantallen in de toast; volledige namen-lijst in de Node-RED-log).\nKnop [Download flow]: haalt de volledige huidige flow op via de Admin API en serveert die via een token-gated endpoint (/wpupdate/flows, 24 uur, privé-link).\nZie de meegeleverde README voor installatie, gedrag en randvoorwaarden.",
     "env": []
   },
   {
@@ -277,7 +277,7 @@
         "wpu0013"
       ]
     ],
-    "func": "// [WP Update] voorbereiding Admin API GET /flows\n// phase: \"check\" of \"apply\" (komt via msg.topic van de knop)\n// Inloggegevens: eerst de dashboard-velden, anders omgevingsvariabelen\n// WPU_ADMIN_USER / WPU_ADMIN_PASS. Dat is de veilige route: geen wachtwoord\n// in de editor of in de Node-RED context (alleen in de container-omgeving).\n// uit1: rechtstreeks GET /flows | uit2: eerst POST /auth/token\nconst c = flow.get(\"WPU_cfg\") || {};\nconst base = adminBase();\nconst phase = (msg.topic === \"apply\") ? \"apply\" : \"check\";\nconst uiUser = (c.user !== undefined && c.user !== null) ? String(c.user).trim() : \"\";\n// wachtwoord uit de session-only memory store (nooit op disk)\nconst uiPassRaw = flow.get(\"WPU_pass\", \"memory\");\nconst uiPass = (uiPassRaw !== undefined && uiPassRaw !== null) ? String(uiPassRaw) : \"\";\nconst user = uiUser || (env.get(\"WPU_ADMIN_USER\") || \"\");\nconst pass = uiPass || (env.get(\"WPU_ADMIN_PASS\") || \"\");\n\nfunction authHeader(tok) {\n    const h = { \"Node-RED-API-Version\": \"v2\" };\n    if (tok) { h[\"Authorization\"] = \"Bearer \" + tok; }\n    return h;\n}\nfunction getFlowsMsg(tok) {\n    return {\n        _phase: phase, _base: base,\n        url: base + \"/flows\", method: \"GET\",\n        headers: authHeader(tok), payload: \"\"\n    };\n}\n\n// Direct verder als geen inlog of een vers token (max 1 uur: admin-tokens\n// vervallen server-side; vooruit verversen voorkomt een 401 midden in een keten)\nif (!user) { return [getFlowsMsg(null), null]; }\n// admin-token (bearer met admin-rechten) alleen in de memory store\nlet token = flow.get(\"WPU_token\", \"memory\");\nconst tokenTime = flow.get(\"WPU_tokenTime\", \"memory\");\nif (token) {\n    if (tokenTime && (Date.now() - tokenTime > 60 * 60 * 1000)) {\n        flow.set(\"WPU_token\", null, \"memory\");\n        flow.set(\"WPU_tokenTime\", null, \"memory\");\n        token = null;\n    } else {\n        return [getFlowsMsg(token), null];\n    }\n}\n\n// Eerst een token halen\nconst tokenMsg = {\n    _phase: phase, _base: base,\n    url: base + \"/auth/token\", method: \"POST\",\n    headers: { \"Content-Type\": \"application/json\" },\n    payload: {\n        client_id: \"node-red-admin\",\n        grant_type: \"password\",\n        scope: \"*\",\n        username: user,\n        password: pass\n    }\n};\nreturn [null, tokenMsg];\n\nfunction adminBase() {\n    // Server-side alleen: loopback (deze flow draait in Node-RED zelf) of de\n    // omgevingsvariabele WPU_ADMIN_BASE. NOOIT uit een dashboard-veld: dan\n    // zouden WPU_ADMIN_USER/PASS naar een willekeurige URL gestuurd kunnen\n    // worden door iemand met alleen dashboard-toegang.\n    const b = (env.get(\"WPU_ADMIN_BASE\") || \"\").trim();\n    if (b) { return b.replace(/\\/+$/, \"\"); }\n    let root = \"\";\n    try { root = (RED.settings && RED.settings.httpAdminRoot) || \"\"; } catch (e) { root = \"\"; }\n    return (\"http://127.0.0.1:1880\" + root).replace(/\\/+$/, \"\");\n}\n",
+    "func": "// [WP Update] voorbereiding Admin API GET /flows\n// phase: \"check\" of \"apply\" (komt via msg.topic van de knop)\n// Inloggegevens: eerst de dashboard-velden, anders omgevingsvariabelen\n// WPU_ADMIN_USER / WPU_ADMIN_PASS. Dat is de veilige route: geen wachtwoord\n// in de editor of in de Node-RED context (alleen in de container-omgeving).\n// uit1: rechtstreeks GET /flows | uit2: eerst POST /auth/token\nconst c = flow.get(\"WPU_cfg\") || {};\nconst base = adminBase();\nconst phase = (msg.topic === \"apply\") ? \"apply\" : (msg.topic === \"flowdl\" ? \"flowdl\" : \"check\");\nconst uiUser = (c.user !== undefined && c.user !== null) ? String(c.user).trim() : \"\";\n// wachtwoord uit de session-only memory store (nooit op disk)\nconst uiPassRaw = flow.get(\"WPU_pass\", \"memory\");\nconst uiPass = (uiPassRaw !== undefined && uiPassRaw !== null) ? String(uiPassRaw) : \"\";\nconst user = uiUser || (env.get(\"WPU_ADMIN_USER\") || \"\");\nconst pass = uiPass || (env.get(\"WPU_ADMIN_PASS\") || \"\");\n\nfunction authHeader(tok) {\n    const h = { \"Node-RED-API-Version\": \"v2\" };\n    if (tok) { h[\"Authorization\"] = \"Bearer \" + tok; }\n    return h;\n}\nfunction getFlowsMsg(tok) {\n    return {\n        _phase: phase, _base: base,\n        url: base + \"/flows\", method: \"GET\",\n        headers: authHeader(tok), payload: \"\"\n    };\n}\n\n// Direct verder als geen inlog of een vers token (max 1 uur: admin-tokens\n// vervallen server-side; vooruit verversen voorkomt een 401 midden in een keten)\nif (!user) { return [getFlowsMsg(null), null]; }\n// admin-token (bearer met admin-rechten) alleen in de memory store\nlet token = flow.get(\"WPU_token\", \"memory\");\nconst tokenTime = flow.get(\"WPU_tokenTime\", \"memory\");\nif (token) {\n    if (tokenTime && (Date.now() - tokenTime > 60 * 60 * 1000)) {\n        flow.set(\"WPU_token\", null, \"memory\");\n        flow.set(\"WPU_tokenTime\", null, \"memory\");\n        token = null;\n    } else {\n        return [getFlowsMsg(token), null];\n    }\n}\n\n// Eerst een token halen\nconst tokenMsg = {\n    _phase: phase, _base: base,\n    url: base + \"/auth/token\", method: \"POST\",\n    headers: { \"Content-Type\": \"application/json\" },\n    payload: {\n        client_id: \"node-red-admin\",\n        grant_type: \"password\",\n        scope: \"*\",\n        username: user,\n        password: pass\n    }\n};\nreturn [null, tokenMsg];\n\nfunction adminBase() {\n    // Server-side alleen: loopback (deze flow draait in Node-RED zelf) of de\n    // omgevingsvariabele WPU_ADMIN_BASE. NOOIT uit een dashboard-veld: dan\n    // zouden WPU_ADMIN_USER/PASS naar een willekeurige URL gestuurd kunnen\n    // worden door iemand met alleen dashboard-toegang.\n    const b = (env.get(\"WPU_ADMIN_BASE\") || \"\").trim();\n    if (b) { return b.replace(/\\/+$/, \"\"); }\n    let root = \"\";\n    try { root = (RED.settings && RED.settings.httpAdminRoot) || \"\"; } catch (e) { root = \"\"; }\n    return (\"http://127.0.0.1:1880\" + root).replace(/\\/+$/, \"\");\n}\n",
     "outputs": 2,
     "noerr": 0,
     "initialize": "",
@@ -370,10 +370,13 @@
       ],
       [
         "wpu061"
+      ],
+      [
+        "wpu0081"
       ]
     ],
-    "func": "// [WP Update] GET /flows verwerken\n// uit1 (check): huidige versie tonen, dan version.json ophalen\n// uit2 (apply): nieuwe flow.json downloaden\n// uit3 (fout): foutmelding\nconst st = flow.get(\"WPU\") || {};\nconst raw = msg.payload;\nconst isV2 = !Array.isArray(raw) && raw && Array.isArray(raw.flows);\nconst flows = isV2 ? raw.flows : (Array.isArray(raw) ? raw : null);\nif (msg.statusCode === 401) {\n    flow.set(\"WPU_token\", null, \"memory\");\n    flow.set(\"WPU_tokenTime\", null, \"memory\");\n    return [null, null, { payload: \"Admin-login geweigerd (401): token vervallen of inlog gewijzigd. Druk opnieuw op de knop; er wordt dan automatisch een nieuw token opgehaald.\", topic: \"WP Update fout\" }];\n}\nif (!flows) {\n    return [null, null, { payload: \"Kan de eigen flows niet ophalen via de Admin API (status \" + msg.statusCode + \"). Check WPU_ADMIN_BASE (omgeving): voorbeeld http://127.0.0.1:1880\", topic: \"WP Update fout\" }];\n}\nconst rev = isV2 ? raw.rev : null;\nst.rev = rev;\nst.apiV2 = isV2;\n\n// Actuele versie uit de changelog-node (\"Line - Changelog\": \"Version 26.5.1 Stable\")\nlet cur = null;\nfor (let i = 0; i < flows.length; i++) {\n    const n = flows[i];\n    if (n && n.name === \"Line - Changelog\" && typeof n.format === \"string\") {\n        const m = /Version (\\d+\\.\\d+\\.\\d+)/.exec(n.format);\n        if (m) { cur = m[1]; break; }\n    }\n}\n// fallback: elke node met \"changelog\" in de naam (een hernoemde node breekt\n// dan niet de versieherkenning)\nif (!cur) {\n    for (let i = 0; i < flows.length; i++) {\n        const n = flows[i];\n        if (!n || !/changelog/i.test(String(n.name || \"\"))) { continue; }\n        const fields = [\"format\", \"info\", \"label\"];\n        for (let j = 0; j < fields.length; j++) {\n            const v = n[fields[j]];\n            if (typeof v === \"string\") {\n                const m = /Version (\\d+\\.\\d+\\.\\d+)/.exec(v);\n                if (m) { cur = m[1]; break; }\n            }\n        }\n        if (cur) { break; }\n    }\n}\nst.currentVersion = cur;\nflow.set(\"WPU\", st);\n// grote blob alléén in de geheugenstore (voorkomt MB-schrijfacties naar disk)\nflow.set(\"WPU_localFlows\", flows, \"memory\");\nnode.status({ text: \"Huidige versie: \" + (cur || \"onbekend\") });\n\nconst curText = cur || \"onbekend\";\nmsg._phase = msg._phase || \"check\";\nif (msg._phase === \"apply\") {\n    if (!st.latest || !st.latest.flowUrl) {\n        return [null, null, { payload: \"Eerst [Controleer op update] drukken: de tab moet weten waar de nieuwe versie te halen is.\", topic: \"WP Update fout\" }];\n    }\n    if (st.latest.checkedAt && (Date.now() - st.latest.checkedAt > 60 * 60 * 1000)) {\n        return [null, null, { payload: \"Update gestopt: de laatste versie-check is ouder dan een uur, versie \" + st.latest.version + \" kan verouderd zijn. Druk eerst op [Controleer op update] en daarna opnieuw op [UPDATE UITVOEREN].\", topic: \"WP Update fout\" }];\n    }\n    const out = {\n        _phase: \"apply\", _base: msg._base,\n        url: st.latest.flowUrl, method: \"GET\", // v4.4.1: al genormaliseerd bij opslag; encodeUri hier gaf %2520 = live-404\n        headers: {}, payload: \"\"\n    };\n    return [null, out, null];\n}\n// check-vertakking: versie-info ophalen\nconst out = {\n    _phase: \"check\", _base: msg._base, _cur: curText,\n    url: \"https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/version.json\",\n    method: \"GET\", headers: {}, payload: \"\"\n};\nreturn [out, null, null];",
-    "outputs": 3,
+    "func": "// [WP Update] GET /flows verwerken\n// uit1 (check): huidige versie tonen, dan version.json ophalen\n// uit2 (apply): nieuwe flow.json downloaden\n// uit3 (fout): foutmelding\nconst st = flow.get(\"WPU\") || {};\nconst raw = msg.payload;\nconst isV2 = !Array.isArray(raw) && raw && Array.isArray(raw.flows);\nconst flows = isV2 ? raw.flows : (Array.isArray(raw) ? raw : null);\nif (msg.statusCode === 401) {\n    flow.set(\"WPU_token\", null, \"memory\");\n    flow.set(\"WPU_tokenTime\", null, \"memory\");\n    return [null, null, { payload: \"Admin-login geweigerd (401): token vervallen of inlog gewijzigd. Druk opnieuw op de knop; er wordt dan automatisch een nieuw token opgehaald.\", topic: \"WP Update fout\" }];\n}\nif (!flows) {\n    return [null, null, { payload: \"Kan de eigen flows niet ophalen via de Admin API (status \" + msg.statusCode + \"). Check WPU_ADMIN_BASE (omgeving): voorbeeld http://127.0.0.1:1880\", topic: \"WP Update fout\" }];\n}\nconst rev = isV2 ? raw.rev : null;\nst.rev = rev;\nst.apiV2 = isV2;\n\n// Actuele versie uit de changelog-node (\"Line - Changelog\": \"Version 26.5.1 Stable\")\nlet cur = null;\nfor (let i = 0; i < flows.length; i++) {\n    const n = flows[i];\n    if (n && n.name === \"Line - Changelog\" && typeof n.format === \"string\") {\n        const m = /Version (\\d+\\.\\d+\\.\\d+)/.exec(n.format);\n        if (m) { cur = m[1]; break; }\n    }\n}\n// fallback: elke node met \"changelog\" in de naam (een hernoemde node breekt\n// dan niet de versieherkenning)\nif (!cur) {\n    for (let i = 0; i < flows.length; i++) {\n        const n = flows[i];\n        if (!n || !/changelog/i.test(String(n.name || \"\"))) { continue; }\n        const fields = [\"format\", \"info\", \"label\"];\n        for (let j = 0; j < fields.length; j++) {\n            const v = n[fields[j]];\n            if (typeof v === \"string\") {\n                const m = /Version (\\d+\\.\\d+\\.\\d+)/.exec(v);\n                if (m) { cur = m[1]; break; }\n            }\n        }\n        if (cur) { break; }\n    }\n}\nst.currentVersion = cur;\nflow.set(\"WPU\", st);\n// grote blob alléén in de geheugenstore (voorkomt MB-schrijfacties naar disk)\nflow.set(\"WPU_localFlows\", flows, \"memory\");\nnode.status({ text: \"Huidige versie: \" + (cur || \"onbekend\") });\n\nconst curText = cur || \"onbekend\";\nmsg._phase = msg._phase || \"check\";\nif (msg._phase === \"flowdl\") {\n    // alleen de opgehaalde flows; geen version.json/download nodig\n    return [null, null, null, { _phase: \"flowdl\", _base: msg._base }];\n}\nif (msg._phase === \"apply\") {\n    if (!st.latest || !st.latest.flowUrl) {\n        return [null, null, { payload: \"Eerst [Controleer op update] drukken: de tab moet weten waar de nieuwe versie te halen is.\", topic: \"WP Update fout\" }];\n    }\n    if (st.latest.checkedAt && (Date.now() - st.latest.checkedAt > 60 * 60 * 1000)) {\n        return [null, null, { payload: \"Update gestopt: de laatste versie-check is ouder dan een uur, versie \" + st.latest.version + \" kan verouderd zijn. Druk eerst op [Controleer op update] en daarna opnieuw op [UPDATE UITVOEREN].\", topic: \"WP Update fout\" }];\n    }\n    const out = {\n        _phase: \"apply\", _base: msg._base,\n        url: st.latest.flowUrl, method: \"GET\", // v4.4.1: al genormaliseerd bij opslag; encodeUri hier gaf %2520 = live-404\n        headers: {}, payload: \"\"\n    };\n    return [null, out, null];\n}\n// check-vertakking: versie-info ophalen\nconst out = {\n    _phase: \"check\", _base: msg._base, _cur: curText,\n    url: \"https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/version.json\",\n    method: \"GET\", headers: {}, payload: \"\"\n};\nreturn [out, null, null];",
+    "outputs": 4,
     "noerr": 0,
     "initialize": "",
     "finalize": "",
@@ -1326,5 +1329,113 @@
     "raw": false,
     "className": "",
     "topic": ""
+  },
+  {
+    "id": "wpu0080",
+    "type": "ui_button",
+    "z": "wpu-tab-0001",
+    "name": "Download flow",
+    "x": 60,
+    "y": 880,
+    "wires": [
+      [
+        "wpu0010"
+      ]
+    ],
+    "group": "wpu-ui-grp",
+    "order": 13,
+    "width": 4,
+    "height": 1,
+    "passthru": false,
+    "label": "Download flow",
+    "tooltip": "Haalt de VOLLEDIGE huidige flow op via de Admin API (GET /flows) en geeft een privé downloadlink (token, 24 uur geldig) voor /wpupdate/flows",
+    "color": "",
+    "bgcolor": "",
+    "className": "",
+    "icon": "fa-file-archive-o",
+    "payload": "",
+    "payloadType": "str",
+    "topic": "flowdl",
+    "topicType": "str"
+  },
+  {
+    "id": "wpu0081",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] flow-dump + privé token",
+    "x": 1980,
+    "y": 800,
+    "outputs": 2,
+    "wires": [
+      [
+        "wpu0082"
+      ],
+      [
+        "wpu074"
+      ]
+    ],
+    "func": "// [WP Update] flow-download: de zojuist via GET /flows opgehaalde flows in\n// de memory store bewaren + download-token aanmaken + PRIVÉ melding\n// (wpu0082 -> wpu076-hub; socketid meegeven: DB1 emitSocket broadcast anders!\n// zie v4.8.1). uit1: privé melding | uit2: fout (error-hub)\nconst st = flow.get(\"WPU\") || {};\nconst flows = flow.get(\"WPU_localFlows\", \"memory\");\nif (!Array.isArray(flows)) {\n    return [null, { payload: \"Interne fout: geen flows in het geheugen. Druk opnieuw op [Download flow].\", topic: \"WP Update fout\" }];\n}\nconst ts = new Date().toISOString();\nconst dump = {\n    meta: {\n        generated: ts,\n        rev: st.rev || null,\n        nodeCount: flows.length,\n        nodeRedFlow: \"HeishaMoNR [WP Update] full-flow download (via Admin API GET /flows)\"\n    },\n    flows: flows\n};\nflow.set(\"WPU_flowDump\", dump, \"memory\");\nconst tok = \"fl\" + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);\nflow.set(\"WPU_flowDlToken\", tok, \"memory\");\nflow.set(\"WPU_flowDlTokenTime\", Date.now(), \"memory\");\nlet root = \"\";\ntry { root = (RED.settings && RED.settings.httpNodeRoot) || \"\"; } catch (e) { root = \"\"; }\nconst link = root + \"/wpupdate/flows?token=\" + tok;\nreturn [{ payload: \"Flow-download klaar: \" + flows.length + \" nodes (rev \" + (st.rev || \"-\") + \"). Download vanaf dezelfde host als dit dashboard: \" + link + \" — het token is alleen in deze melding zichtbaar (alleen voor de client die de download startte, via msg.socketid), 24 uur geldig; zonder of verlopen token weigert de download. NB: credentials uit de credential-store zitten NIET in de flow-JSON (de Admin API stripped ze); legacy plaintext velden in node-configs wel.\", topic: \"WP Update flow\", socketid: msg.socketid, _client: msg._client }, null];\n",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "wpu0082",
+    "type": "link out",
+    "z": "wpu-tab-0001",
+    "name": "melding: flow-download (privé)",
+    "links": [
+      "wpu076"
+    ],
+    "x": 1980,
+    "y": 880
+  },
+  {
+    "id": "wpu0083",
+    "type": "http in",
+    "z": "wpu-tab-0001",
+    "name": "GET /wpupdate/flows",
+    "x": 60,
+    "y": 1120,
+    "wires": [
+      [
+        "wpu0084"
+      ]
+    ],
+    "url": "/wpupdate/flows",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": ""
+  },
+  {
+    "id": "wpu0084",
+    "type": "function",
+    "z": "wpu-tab-0001",
+    "name": "[WP Update] flow serveren",
+    "x": 380,
+    "y": 1120,
+    "outputs": 1,
+    "wires": [
+      [
+        "wpu0085"
+      ]
+    ],
+    "func": "// [WP Update] flow-download endpoint: served ALLEEN met een geldige token\n// (http-nodes vallen NIET onder adminAuth; het token vervangt de authenticatie,\n// net als bij /wpupdate/backup)\nconst b = flow.get(\"WPU_flowDump\", \"memory\");\nconst q = (msg.req && msg.req.query) || {};\nif (!b) {\n    msg.statusCode = 404;\n    msg.headers = { \"Content-Type\": \"application/json\" };\n    msg.payload = { error: \"Nog geen flow opgehaald. Druk eerst op [Download flow].\" };\n    return msg;\n}\nconst tok = flow.get(\"WPU_flowDlToken\", \"memory\");\nconst tokTime = flow.get(\"WPU_flowDlTokenTime\", \"memory\");\nconst tokVers = tok && (!tokTime || (Date.now() - tokTime <= 24 * 60 * 60 * 1000));\nif (!tokVers || q.token !== tok) {\n    msg.statusCode = 403;\n    msg.headers = { \"Content-Type\": \"application/json\" };\n    msg.payload = { error: \"Flow-download-token ontbreekt, klopt niet of is verlopen (24 uur na [Download flow]). Het actuele token staat in de privé-melding direct na de klik.\" };\n    return msg;\n}\nmsg.payload = JSON.stringify(b, null, 2);\nmsg.headers = {\n    \"Content-Type\": \"application/json\",\n    \"Content-Disposition\": \"attachment; filename=\" + (b.meta && b.meta.generated ? \"flows-\" + b.meta.generated.slice(0, 10) + \".json\" : \"flows.json\")\n};\nreturn msg;\n",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "wpu0085",
+    "type": "http response",
+    "z": "wpu-tab-0001",
+    "name": "flow-antwoord",
+    "x": 700,
+    "y": 1120,
+    "wires": [],
+    "statusCode": "",
+    "headers": {}
   }
 ]

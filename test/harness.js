@@ -399,6 +399,50 @@ section('T15 restore chain: inspect + snapshot-gated apply');
   ok(c.stores.default.WPU_restore === null || c.stores.default.WPU_restore === undefined, 'pending cleared');
 }
 
+// ---------------- T16: flow-download button (v4.10) ----------------
+section('T16 v4.10 flow-download: phase, dump+token, private link, endpoint');
+{
+  // wpu0010 routes topic 'flowdl' to a fresh GET /flows on loopback
+  const c = makeCtx();
+  c.stores.default.WPU_cfg = { adminBase: 'http://evil.example:8080' };
+  const o = c.run('wpu0010', { topic: 'flowdl', payload: '' });
+  ok(o[0].url === 'http://127.0.0.1:1880/flows' && o[0]._phase === 'flowdl', 'flowdl -> GET /flows on loopback with _phase', o[0].url + ' ' + o[0]._phase);
+  // wpu0015 in flowdl phase -> 4th output, no version.json/apply
+  const local = makeLocal();
+  const o2 = c.run('wpu0015', { statusCode: 200, payload: { flows: local, rev: 'rev9' }, _phase: 'flowdl', _base: 'http://127.0.0.1:1880' });
+  ok(o2.length === 4 && o2[0] === null && o2[1] === null && o2[2] === null && o2[3] && o2[3]._phase === 'flowdl', 'wpu0015 flowdl -> out4 only');
+  ok(Array.isArray(c.stores.memory.WPU_localFlows), 'flows cached in memory for the dump');
+  // wpu0081: dump + token in memory, private link with socketid passthrough
+  const o3 = c.run('wpu0081', { socketid: 'sock99', _client: { socketid: 'sock99' } });
+  ok(o3[1] === null, 'no error');
+  ok(c.stores.memory.WPU_flowDump && c.stores.memory.WPU_flowDump.meta.nodeCount === local.length && Array.isArray(c.stores.memory.WPU_flowDump.flows), 'flow dump in MEMORY store with meta');
+  ok(typeof c.stores.memory.WPU_flowDlToken === 'string' && c.stores.memory.WPU_flowDlToken.startsWith('fl'), 'flow token in memory');
+  ok(!c.stores.default.WPU_flowDump && !c.stores.default.WPU_flowDlToken, 'nothing flow-related in persisted store');
+  ok(o3[0].socketid === 'sock99' && !!o3[0]._client, 'socketid + _client forwarded (DB1 private toast)');
+  ok(o3[0].payload.includes('/wpupdate/flows?token=' + c.stores.memory.WPU_flowDlToken), 'relative token link in private message');
+  // wpu0081 without cached flows -> error hub
+  const c2 = makeCtx();
+  const o3b = c2.run('wpu0081', {});
+  ok(o3b[0] === null && o3b[1] && /fout/.test(o3b[1].topic), 'no cached flows -> error output');
+  // wpu0084 endpoint: 404 / 403 / 403-expired / 200
+  let r = c2.run('wpu0084', { req: { query: {} } });
+  ok(r.statusCode === 404, 'no dump -> 404');
+  r = c.run('wpu0084', { req: { query: { token: 'wrong' } } });
+  ok(r.statusCode === 403, 'wrong token -> 403');
+  r = c.run('wpu0084', { req: { query: {} } });
+  ok(r.statusCode === 403, 'missing token -> 403');
+  c.stores.memory.WPU_flowDlTokenTime = Date.now() - 25 * 3600 * 1000;
+  r = c.run('wpu0084', { req: { query: { token: c.stores.memory.WPU_flowDlToken } } });
+  ok(r.statusCode === 403, 'expired (>24h) token -> 403');
+  c.stores.memory.WPU_flowDlTokenTime = Date.now();
+  r = c.run('wpu0084', { req: { query: { token: c.stores.memory.WPU_flowDlToken } } });
+  ok(!r.statusCode || r.statusCode === 200, 'valid token -> 200');
+  ok(r.headers['Content-Disposition'].includes('attachment') && r.headers['Content-Disposition'].includes('flows-'), 'attachment disposition');
+  const served = JSON.parse(r.payload);
+  ok(served.meta.nodeCount === local.length && served.flows.length === local.length, 'served dump contains all flows');
+  ok(!r.payload.includes(c.stores.memory.WPU_flowDlToken), 'token VALUE not inside the served payload');
+}
+
 console.log('\n==============================');
 console.log('TOTAL: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
