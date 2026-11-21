@@ -252,6 +252,13 @@ section('T8 wpu0030 id-stable merge, real 26.5.1 local+package, updater tab pres
   const gc = flows.find(n => n.type === 'global-config');
   ok(gc && gc.env.some(e => e.name === 'MIJN_VAR'), 'local global-config env merged (MIJN_VAR survives)');
   ok(out[2] && /wp-preupdate-flows-/.test(out[2].filename), 'pre-update snapshot emitted', out[2] && out[2].filename);
+  const ms = post._mergeStats;
+  ok(ms && typeof ms.nieuw === 'number', 'merge stats present on POST msg', ms);
+  ok(ms.nieuw === 0, 'stats: local is already 26.5.1 -> 0 new', ms.nieuw);
+  ok(ms.bijgewerkt >= 1 && ms.bijgewerkt <= 3, 'stats: locally reconfigured nodes counted as updated (broker, global-config env)', ms.bijgewerkt);
+  ok(ms.verwijderd === 0, 'stats: nothing removed in id-stable scenario', ms.verwijderd);
+  ok(ms.nieuw + ms.bijgewerkt + ms.ongewijzigd === 3562, 'stats: new+updated+unchanged == package size', ms.nieuw + ms.bijgewerkt + ms.ongewijzigd);
+  ok(Array.isArray(post._newNames) && post._newNames.length === 0, 'newNames empty when nothing new', post._newNames);
   ok(flows.length === local.length - (newIds.size) + newPkg2651.length - 0 || true, 'node count sane', flows.length + ' vs local ' + local.length);
   console.log('  info: merged flows =', flows.length, 'nodes (local had', local.length + ', package', newPkg2651.length + ')');
 }
@@ -301,6 +308,9 @@ section('T11 wpu0031 deploy result incl. 409');
   const c = makeCtx();
   let out = c.run('wpu0031', { statusCode: 200, _newCount: 3600 });
   ok(/geslaagd/.test(out.payload), '200 -> success message');
+  out = c.run('wpu0031', { statusCode: 200, _mergeStats: { nieuw: 15, bijgewerkt: 81, verwijderd: 1, ongewijzigd: 3451 }, _newNames: ['Get flows', 'Update flow'] });
+  ok(/15 nieuwe node/.test(out.payload) && /Get flows/.test(out.payload), 'stats toast: new count + names');
+  ok(/81 bijgewerkt/.test(out.payload) && /1 verwijderd/.test(out.payload) && /3451 ongewijzigd/.test(out.payload), 'stats toast: updated/removed/unchanged counts');
   out = c.run('wpu0031', { statusCode: 409 });
   ok(/409/.test(out.payload), '409 rev conflict -> clear message');
 }
