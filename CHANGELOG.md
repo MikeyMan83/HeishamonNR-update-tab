@@ -2,7 +2,20 @@
 
 All dates are 21 Nov 2026: this tab was built, reviewed and hardened in one day. Key facts per version: the button behaviour and merge rules are stable since v4.6; earlier versions are mostly of historical interest.
 
-## v4.7 (current, 69 nodes, 127/127 checks)
+## v4.8 (current, 70 nodes)
+
+Fourth external review processed; every finding verified against the v4.7 code before fixing. Fixes:
+
+- **Admin API URL no longer dashboard-controlled** (credential exfiltration, high): the "Admin API URL" input (`wpu0004`) was removed. All Admin API calls now use a server-side derived base (`adminBase()` helper in `wpu0010`/`wpu0021`/`wpu0030`): `http://127.0.0.1:1880` + `httpAdminRoot` (read via `RED.settings`, guarded), or the `WPU_ADMIN_BASE` environment variable for non-standard ports. Previously, anyone with dashboard access could set the base URL to their own server and harvest the `WPU_ADMIN_USER`/`WPU_ADMIN_PASS` env credentials via the `POST /auth/token` body.
+- **Backup download token no longer broadcast** (high): the backup-complete message now routes via a dedicated link pair (`wpu065` -> `wpu076` link in -> `wpu0076`, a `ui_toast` with `sendall: false` and the clicker's `_client` preserved) instead of the shared notification hub, so the token is never sent to all dashboard clients and never lands in the shared Status field. The download link is now a relative path (`httpNodeRoot + /wpupdate/backup?token=...`) resolved against the dashboard's own origin, instead of a host derived from the old URL field. The in-memory `WPU_BACKUP` dump moved to the memory context store as well.
+- **Credentials never persisted**: UI password (`WPU_pass`), admin bearer token (`WPU_token`/`WPU_tokenTime`) and download token (`WPU_dlToken`/`WPU_dlTokenTime`) now live only in the memory store — with file-based context storage nothing credential-like hits disk anymore. Consequence: after a Node-RED restart the UI password must be re-entered (env vars remain the persistent route, documented in the README and the password-field tooltip).
+- **Robust version detection**: fallback scan for any node with "changelog" in its name (`format`/`info`/`label`), so renaming the changelog node no longer breaks detection; and an unknown current version is reported honestly instead of being treated as older — previously every check would show a phantom "update!" and UPDATE would redeploy the same version.
+- **Subflow match in the rebuild safety net**: subflows are matched on their `name` (they have no `label`), so a full id-rebuild would now also clean up rebuilt subflow definitions instead of leaving unreferenced duplicates.
+- Node count 69 -> 70 (removed `wpu0004`, added `wpu076`/`wpu0076`).
+
+Validation after the change: JSON re-parsed, 70 nodes, no dangling wires/links, all 19 function bodies pass `node --check`, no references to the removed `adminBase`/persistent-token fields remain. The v4.7 S-suite (127/127) should be re-run before release; the changed code paths are S1, S2, S6, S11 and S13.
+
+## v4.7 (69 nodes, 127/127 checks)
 
 Third external review (Gemini) processed, every claim verified first. Most reported bugs turned out to refer to the v4.4 code and were already fixed in v4.5/v4.6; the catch-scope claim was partly valid: the backup write actions were indeed missing. Five real fixes:
 
