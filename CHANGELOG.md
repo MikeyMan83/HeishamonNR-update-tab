@@ -2,7 +2,18 @@
 
 All dates are 21 Nov 2026: this tab was built, reviewed and hardened in one day. Key facts per version: the button behaviour and merge rules are stable since v4.6; earlier versions are mostly of historical interest.
 
-## v4.11.2 (current, 83 nodes)
+## v4.12.0 (current, 98 nodes)
+
+Layout, UX parity and the download fix:
+
+- **Sectional dashboard**: four `ui_group` sections in order 1-4 — **Update** (Check for update / RUN UPDATE + Installed/Available/Status), **Updater** (new [Check updater version] button `wpu00a0` topic `selfcheck`, [Update the updater] `wpu0090`, new **Updater** version field `wpu00a1`), **Backup & export** (Backup settings / Restore / Download flow / Backup folder), **Admin** (user/password). Buttons in one column, inputs/readouts in the next; 10 section comment nodes on the right rail. No same-cell collisions, all nodes on the 320x80 grid, no dangling wires.
+- **Updater check-then-apply UX parity** (same as the package update: check shows versions, the update button applies): [Check updater version] only fetches the pinned updater `version.json` and displays `current -> available (update!)/(up to date)` in the Updater field (`wpu0093` out2 -> `wpu00a1`) — it never downloads. Only [Update the updater] (topic `selfupdate`) downloads and applies when newer (`wpu0093` out1 -> `wpu0094`). Bug fixed in `wpu0015`: the out5 phase was hardcoded to `selfupdate`, so a mere version check would also have triggered the download; it now preserves the incoming phase (`selfcheck` stays `selfcheck`).
+- **Download fix** ("download flow doesn't download onto the browser device"): the two `http response` nodes (`wpu0029` for `/wpupdate/backup`, `wpu0085` for `/wpupdate/flows`) had `headers: []` (array) in the exported config. On Node-RED 5.x that makes the node ignore the `msg.headers` set by the serve functions, so `Content-Type`/`Content-Disposition: attachment` were never sent and the browser rendered the JSON in the tab instead of saving it. Both nodes now carry `headers: {}` (empty object) — verified live on Node-RED 5.0.10: function-set headers are sent. Clicking the private toast link now downloads the file.
+- **Remaining Dutch translated to English** (Ed's package UI is English): node names (`wpu0017` "GET repo page (fallback)", `wpu0018` "GET new flow.json", `wpu0064`/`wpu070` "error: download"/"error: snapshot", `wpu0076` "Message (this client)") and user-visible function literals (`"onbekend"` -> `"unknown"` incl. the phantom-update guard in `wpu0019`, "while version", "Internal error: duplicate node id after merge", "Possibly renamed; check manually", "(via repo scan)"). Code comments stay Dutch (developer-facing, by agreement).
+- Harness: T18 updated for the phase-gated download (`_phase: 'selfupdate'` required for the download assert; `selfcheck` displays only; `up to date` display text) + new section **T21** (4 groups with names/orders, every widget assigned to a group, `wpu00a0`/`wpu00a1`/`wpu0090` wiring, `wpu0093`/`wpu0015` wire shapes, response-node `headers` deep-equal `{}`, Content-Disposition in the serve functions, tab version === version.json, no Dutch in user-visible fields) -> **167/167**.
+- Tab node `version` and `version.json` bumped to 4.12.0, so a running 4.11.2 tab offers this update via [Update the updater] itself.
+
+## v4.11.2 (83 nodes)
 
 Error-reporting audit (question: "are errors properly logged and shown on screen?"). Systematic trace of every failure path:
 

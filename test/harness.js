@@ -187,7 +187,7 @@ section('T5 wpu0019 version compare + allowlist + unknown-cur');
   out = c.run('wpu0019', { statusCode: 200, payload: { version: '26.6.0', flowUrl: 'https://evil.example/x.json' }, _cur: '26.5.1' });
   ok(out[2] && /outside the HeishaMoNR repo/.test(out[2].payload) && !c.stores.default.WPU.latest, 'evil flowUrl refused, latest untouched');
   c = mk();
-  out = c.run('wpu0019', { statusCode: 200, payload: { version: '26.6.0', flowUrl: 'https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/flows%20(26.6.0%20stable).json' }, _cur: 'onbekend' });
+  out = c.run('wpu0019', { statusCode: 200, payload: { version: '26.6.0', flowUrl: 'https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/flows%20(26.6.0%20stable).json' }, _cur: 'unknown' });
   ok(out[2] && /unknown/.test(out[2].payload) && out[1].payload === '26.6.0', 'unknown cur -> honest message, NO phantom update!', [out[1].payload, out[2] && out[2].payload]);
   c = mk();
   out = c.run('wpu0019', { statusCode: 404, payload: 'Not Found', _cur: '26.5.1' });
@@ -205,7 +205,7 @@ section('T6 wpu001a repo-scan (filename regex incl. real root file)');
   const out = c.run('wpu001a', { statusCode: 200, payload: html });
   ok(out[1].payload === '26.5.1 (update!)', 'highest stable picked', out[1].payload);
   ok(c.stores.default.WPU.latest.flowUrl === 'https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/flows%20(26.5.1%20stable).json', 'raw URL pinned+encoded', c.stores.default.WPU.latest.flowUrl);
-  const c2 = makeCtx(); c2.stores.default.WPU = { currentVersion: 'onbekend' };
+  const c2 = makeCtx(); c2.stores.default.WPU = { currentVersion: 'unknown' };
   const out2 = c2.run('wpu001a', { statusCode: 200, payload: html });
   ok(out2[2] && /unknown/.test(out2[2].payload) && out2[1].payload === '26.5.1', 'unknown cur -> honest scan message');
 }
@@ -479,26 +479,35 @@ section('T18 v4.11 self-update: phase, pinned version.json, validation, wpu-only
   c.stores.default.WPU_cfg = { adminBase: 'http://evil.example:8080' };
   const o = c.run('wpu0010', { topic: 'selfupdate', payload: '' });
   ok(o[0].url === 'http://127.0.0.1:1880/flows' && o[0]._phase === 'selfupdate', 'selfupdate -> GET /flows loopback with _phase', o[0].url);
-  // wpu0015 selfupdate phase -> out5 with PINNED updater version.json URL
+  const oc = c.run('wpu0010', { topic: 'selfcheck', payload: '' });
+  ok(oc[0].url === 'http://127.0.0.1:1880/flows' && oc[0]._phase === 'selfcheck', 'selfcheck -> GET /flows loopback with _phase selfcheck', oc[0].url);
+  // wpu0015 selfupdate/selfcheck phase -> out5 with PINNED updater version.json URL, phase preserved (v4.12)
   const local = makeLocal(); // real 26.5.1 + broker mod + personal tab + the tab itself
   local.find(n => n.id === 'wpu-tab-0001').version = '4.10.4';
   const o2 = c.run('wpu0015', { statusCode: 200, payload: { flows: local, rev: 'rev77' }, _phase: 'selfupdate', _base: 'http://127.0.0.1:1880' });
   ok(o2.length === 5 && o2[4] && o2[4].url === 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/version.json' && o2[0] === null, 'selfupdate -> out5 pinned updater version.json', o2[4] && o2[4].url);
+  ok(o2[4]._phase === 'selfupdate', 'out5 keeps _phase selfupdate', o2[4]._phase);
+  const o2b = c.run('wpu0015', { statusCode: 200, payload: { flows: local, rev: 'rev77' }, _phase: 'selfcheck', _base: 'http://127.0.0.1:1880' });
+  ok(o2b[4] && o2b[4]._phase === 'selfcheck' && o2b[4].url.includes('HeishamonNR-update-tab/main/version.json'), 'selfcheck -> out5 with _phase selfcheck (NOT rewritten to selfupdate)', o2b[4] && o2b[4]._phase);
   ok(c.stores.memory.WPU_localFlows.length === local.length && c.stores.default.WPU.rev === 'rev77', 'local flows + rev cached for the merge');
   // wpu0093: newer version -> download msg with allowlisted flowUrl; evil flowUrl refused; same version -> info; bad format -> error
   const mk93 = (ver) => { const c = makeCtx(); c.stores.default.WPU = {}; c.stores.memory.WPU_localFlows = local; return c; };
+  // v4.12: check-then-apply parity — only _phase 'selfupdate' downloads; 'selfcheck' only displays "cur -> version"
   let c3 = mk93();
-  let r = c3.run('wpu0093', { statusCode: 200, payload: { version: '4.11.0', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
-  ok(r[0] && r[0].url.endsWith('/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json') && r[0].method === 'GET', 'newer -> download msg', r[0] && r[0].url);
+  let r = c3.run('wpu0093', { statusCode: 200, _phase: 'selfupdate', payload: { version: '4.11.0', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
+  ok(r[0] && r[0].url.endsWith('/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json') && r[0].method === 'GET' && r[0]._phase === 'selfupdate', 'selfupdate + newer -> download msg', r[0] && r[0].url);
   ok(c3.stores.default.WPU.selfLatest.version === '4.11.0', 'selfLatest stored');
   c3 = mk93();
-  r = c3.run('wpu0093', { statusCode: 200, payload: { version: '4.11.0', flowUrl: 'https://evil.example/x.json' } });
+  r = c3.run('wpu0093', { statusCode: 200, _phase: 'selfcheck', payload: { version: '4.11.0', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
+  ok(!r[0] && r[1] && r[1].payload === '4.10.4 -> 4.11.0 (update!)', 'selfcheck + newer -> display only, NO download', r[1] && r[1].payload);
+  c3 = mk93();
+  r = c3.run('wpu0093', { statusCode: 200, _phase: 'selfupdate', payload: { version: '4.11.0', flowUrl: 'https://evil.example/x.json' } });
   ok(r[2] && /outside the HeishamonNR-update-tab repo/.test(r[2].payload) && !r[0], 'evil flowUrl refused');
   c3 = mk93();
-  r = c3.run('wpu0093', { statusCode: 200, payload: { version: '4.10.4', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
-  ok(r[1] && /already up to date/.test(r[1].payload) && !r[0], 'same version -> info, no download');
+  r = c3.run('wpu0093', { statusCode: 200, _phase: 'selfupdate', payload: { version: '4.10.4', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
+  ok(r[1] && r[1].payload === '4.10.4 -> 4.10.4 (up to date)' && !r[0], 'selfupdate + same version -> "up to date" display, no download', r[1] && r[1].payload);
   c3 = mk93();
-  r = c3.run('wpu0093', { statusCode: 200, payload: { version: '4.11-beta', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
+  r = c3.run('wpu0093', { statusCode: 200, _phase: 'selfupdate', payload: { version: '4.11-beta', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
   ok(r[2] && /unexpected version format/.test(r[2].payload), 'non-X.Y.Z refused');
   // wpu0095: validation rules
   const newTab = JSON.parse(JSON.stringify(tab.filter(n => String(n.id).startsWith('wpu'))));
@@ -572,6 +581,40 @@ section('T20 v4.11.2 deploy log hygiene (every deploy outcome leaves an audit tr
 }
 
 console.log('\n==============================');
+// ---------------- T21: v4.12 sectional dashboard, updater UX parity, download headers, EN UI ----------------
+section('T21 v4.12: dashboard sections, updater check-then-apply UX, response-node headers, English UI');
+{
+  const byid = Object.fromEntries(tab.map(n => [n.id, n]));
+  const groups = tab.filter(n => n.type === 'ui_group');
+  const gnames = groups.map(g => g.name + ':' + g.order).sort();
+  ok(groups.length === 4 && gnames.join('|') === 'Admin:4|Backup & export:3|Update:1|Updater:2', 'four dashboard groups Update/Updater/Backup & export/Admin in order 1-4', gnames);
+  const widgetGroups = new Set(groups.map(g => g.id));
+  const widgets = tab.filter(n => String(n.type).startsWith('ui_') && n.type !== 'ui_tab' && n.type !== 'ui_group' && n.type !== 'ui_toast');
+  ok(widgets.every(w => widgetGroups.has(w.group)), 'every dashboard widget is assigned to a section group', widgets.filter(w => !widgetGroups.has(w.group)).map(w => w.id));
+  ok(byid['wpu00a0'] && byid['wpu00a0'].type === 'ui_button' && byid['wpu00a0'].topic === 'selfcheck' && JSON.stringify(byid['wpu00a0'].wires) === '[["wpu0010"]]' && byid['wpu00a0'].group === 'wpu-ui-grp2', 'Check updater version button (topic selfcheck) in Updater group wired to wpu0010');
+  ok(byid['wpu00a1'] && byid['wpu00a1'].type === 'ui_text' && byid['wpu00a1'].group === 'wpu-ui-grp2' && byid['wpu00a1'].format === '{{msg.payload}}', 'Updater version display ui_text in Updater group');
+  ok(byid['wpu0090'] && byid['wpu0090'].topic === 'selfupdate' && byid['wpu0090'].group === 'wpu-ui-grp2', 'Update the updater button (topic selfupdate) in Updater group');
+  ok(byid['wpu0093'] && byid['wpu0093'].outputs === 3 && JSON.stringify(byid['wpu0093'].wires) === '[["wpu0094"],["wpu00a1"],["wpu074"]]', 'wpu0093 wires: out1 download, out2 version display, out3 error hub');
+  ok(byid['wpu0015'] && byid['wpu0015'].outputs === 5 && JSON.stringify(byid['wpu0015'].wires[4]) === '["wpu0092"]', 'wpu0015 out5 -> wpu0092 (pinned updater version.json)');
+  for (const nid of ['wpu0029', 'wpu0085']) {
+    const n = byid[nid];
+    ok(n && n.type === 'http response' && n.headers && typeof n.headers === 'object' && !Array.isArray(n.headers) && Object.keys(n.headers).length === 0, nid + ' http response headers is an empty OBJECT {} (Node-RED 5.x then sends msg.headers set by the function)', n && n.headers);
+  }
+  for (const nid of ['wpu0028', 'wpu0084']) {
+    ok(/Content-Disposition/.test(byid[nid].func) && /attachment/.test(byid[nid].func) && /Content-Type/.test(byid[nid].func), nid + ' serve function sets Content-Type + Content-Disposition: attachment (browser downloads the file)');
+  }
+  const vjson = JSON.parse(fs.readFileSync(path.join(ROOT, 'version.json'), 'utf8'));
+  const tabNode = tab.find(n => n.type === 'tab');
+  ok(tabNode.version === vjson.version && /^\d+\.\d+\.\d+$/.test(vjson.version), 'tab version === version.json version (' + tabNode.version + ')', { tab: tabNode.version, json: vjson.version });
+  ok(/^https:\/\/raw\.githubusercontent\.com\/MikeyMan83\/HeishamonNR-update-tab\//.test(vjson.flowUrl), 'version.json flowUrl allowlisted to this repo');
+  const dutch = /\b(nieuwe|nieuw|fout|fouten|melding|deze|installeer|uitvoer|controleer|herstel|toepass|bestand|huidige|nieuwste|opslaan|sluit|gelukt|mislukt|gereed|bezig|opnieuw|annuleer|bevestig|verwijder|gewijzigd|toegevoegd|ongewijzigd|onbekend|geweigerd|ophalen|hersteld|bijgewerkt|terwijl|verwacht|wachwoord|gebruiker|pagina|omgeving|variabele|veld|velden|inlog|mogelijk|hernoemd|handmatig)\b/i;
+  const leaks = [];
+  for (const n of tab) for (const f of ['name', 'label', 'tooltip', 'ok', 'cancel']) {
+    if (typeof n[f] === 'string' && dutch.test(n[f])) leaks.push(n.id + '.' + f);
+  }
+  ok(leaks.length === 0, 'no Dutch left in user-visible node fields (name/label/tooltip/ok/cancel)', leaks);
+}
+
 console.log('TOTAL: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
 }
