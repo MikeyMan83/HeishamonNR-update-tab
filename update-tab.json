@@ -6,7 +6,7 @@
     "disabled": false,
     "info": "[WP Update] flow tab for HeishaMoNR (PR material).\nAutomatic version check, settings backup AND restore (full global context to/from file, download endpoint),\nplus one-click atomic update via the Node-RED Admin API (id-merge with rebuild safety nets).\n\nWorks with version.json in the repo root; if absent, automatically falls back to a repo scan of the plain GitHub page.\nAdmin login: user/password via the dashboard fields (password session-only in memory, never on disk) or via the environment variables WPU_ADMIN_USER / WPU_ADMIN_PASS. The Admin API URL is derived server-side (loopback 127.0.0.1:1880, or WPU_ADMIN_BASE for a non-standard port or httpAdminRoot) and is therefore not a dashboard field.\nAfter an update the tab reports how many nodes are new/updated/removed/unchanged (counts in the toast; full name list in the Node-RED log).\n[Download flow] button: fetches the full current flow via the Admin API and serves it via a token-gated endpoint (/wpupdate/flows, 24h, private link).\n[Update the updater] button: self-update of this tab from this repo's pinned version.json/update-tab.json (wpu-only merge, atomic POST /flows with snapshot + rev; rollback = older update-tab.json from git history).\nSee the included README for installation, behavior and edge cases.",
     "env": [],
-    "version": "4.11.0"
+    "version": "4.11.1"
   },
   {
     "id": "wpu-ui-tab",
@@ -1259,7 +1259,10 @@
       "wpu0017",
       "wpu0018",
       "wpu0022",
-      "wpu0023"
+      "wpu0023",
+      "wpu0092",
+      "wpu0094",
+      "wpu0097"
     ],
     "uncaught": false,
     "x": 700,
