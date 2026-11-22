@@ -1,4 +1,14 @@
-## v4.12.5 (current, 99 nodes)
+## v4.12.6 (current, 98 nodes)
+
+One check instead of two (user request: "Do we need two check version buttons?" with the follow-up to merge them cleanly):
+
+- **Single [Check for updates] button**: [Check flow version] and [Check tab version] are merged. One click still costs one Admin API call (token + GET /flows); the check branch of wpu0015 now emits both pinned, cache-busted fetches in parallel (the package version.json for Installed vs Available, and this repo's version.json for the Tab version field). [Update flow] stays a pure flow action: the apply phase never triggers the tab check.
+- **[Check tab version] removed**: [Update tab] is itself check-then-apply (fetch pinned version.json, show `current -> available (update!)/(up to date)`, download only when newer), so a separate look-only check button added no safety while it did add a second button and vocabulary.
+- **Wording swept**: wpu0015/wpu0030/wpu0031 error texts now say "Press [Check for updates] first"; wpu0090's tooltip rewritten without the [Check tab version] reference; the stale "Update now" README bullet renamed to the button's real name [Update flow] (a leftover from before the v4.12.4 rename).
+- Harness: T21/T22/T23 moved to the merged vocabulary (98 nodes, 8+8 widgets, four cache-busters in wpu0015, the stale-name regex now also rejects "Check flow version" and "Check tab version"), new **T24** (merged check emits both fetches, apply stays pure, selfcheck never downloads) -> **208/208**.
+- Nodes: 98 (one button removed).
+
+## v4.12.5 (99 nodes)
 
 Editor-canvas tidy after reviewing the v4.12.3/v4.12.4 layout passes (no runtime change):
 
