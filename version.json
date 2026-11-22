@@ -1,0 +1,5 @@
+{
+  "version": "4.11.0",
+  "flowUrl": "https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json",
+  "notes": "Self-update: 'Update the updater' button. Pinned to this repo, wpu-only merge, palette pre-flight, pre-update snapshot, atomic POST /flows with rev."
+}

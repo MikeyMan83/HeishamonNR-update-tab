@@ -95,7 +95,7 @@ section('T1 wpu0015 verwerk GET /flows (real 26.5.1)');
   const c = makeCtx();
   const local = makeLocal();
   const out = c.run('wpu0015', { statusCode: 200, payload: { flows: local, rev: 'rev123' }, _phase: 'check', _base: 'http://127.0.0.1:1880', topic: 'check' });
-  ok(Array.isArray(out) && out.length === 3, '3 outputs');
+  ok(tab.find(n => n.id === 'wpu0015').outputs === 5 && Array.isArray(out) && out.length >= 1, 'wpu0015 configured 5 outputs (check/apply/err/flowdl/selfupdate)');
   ok(out[0] && out[0].url === 'https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/version.json', 'check -> version.json', out[0] && out[0].url);
   ok(c.stores.default.WPU.currentVersion === '26.5.1', 'currentVersion 26.5.1', c.stores.default.WPU.currentVersion);
   ok(c.stores.default.WPU.rev === 'rev123' && c.stores.default.WPU.apiV2 === true, 'rev + apiV2 stored');
@@ -414,7 +414,7 @@ section('T16 v4.10 flow-download: phase, dump+token, private link, endpoint');
   // wpu0015 in flowdl phase -> 4th output, no version.json/apply
   const local = makeLocal();
   const o2 = c.run('wpu0015', { statusCode: 200, payload: { flows: local, rev: 'rev9' }, _phase: 'flowdl', _base: 'http://127.0.0.1:1880' });
-  ok(o2.length === 4 && o2[0] === null && o2[1] === null && o2[2] === null && o2[3] && o2[3]._phase === 'flowdl', 'wpu0015 flowdl -> out4 only');
+  ok(o2[0] === null && o2[1] === null && o2[2] === null && o2[3] && o2[3]._phase === 'flowdl', 'wpu0015 flowdl -> out4 only');
   ok(Array.isArray(c.stores.memory.WPU_localFlows), 'flows cached in memory for the dump');
   // wpu0081: dump + token in memory, private link with socketid passthrough
   const o3 = c.run('wpu0081', { socketid: 'sock99', _client: { socketid: 'sock99' } });
@@ -468,6 +468,80 @@ section('T17 v4.10.2 link-node hygiene (editor-symmetric exports)');
     }
   }
   ok(asym.length === 0, 'every link out/in pair is editor-symmetric + wires:[] (so editor imports and re-deploys keep the link)', asym);
+}
+
+// ---------------- T18: self-update of the updater itself (v4.11) ----------------
+section('T18 v4.11 self-update: phase, pinned version.json, validation, wpu-only merge, POST');
+{
+  // wpu0010 routes topic 'selfupdate' to GET /flows on loopback
+  const c = makeCtx();
+  c.stores.default.WPU_cfg = { adminBase: 'http://evil.example:8080' };
+  const o = c.run('wpu0010', { topic: 'selfupdate', payload: '' });
+  ok(o[0].url === 'http://127.0.0.1:1880/flows' && o[0]._phase === 'selfupdate', 'selfupdate -> GET /flows loopback with _phase', o[0].url);
+  // wpu0015 selfupdate phase -> out5 with PINNED updater version.json URL
+  const local = makeLocal(); // real 26.5.1 + broker mod + personal tab + the tab itself
+  local.find(n => n.id === 'wpu-tab-0001').version = '4.10.4';
+  const o2 = c.run('wpu0015', { statusCode: 200, payload: { flows: local, rev: 'rev77' }, _phase: 'selfupdate', _base: 'http://127.0.0.1:1880' });
+  ok(o2.length === 5 && o2[4] && o2[4].url === 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/version.json' && o2[0] === null, 'selfupdate -> out5 pinned updater version.json', o2[4] && o2[4].url);
+  ok(c.stores.memory.WPU_localFlows.length === local.length && c.stores.default.WPU.rev === 'rev77', 'local flows + rev cached for the merge');
+  // wpu0093: newer version -> download msg with allowlisted flowUrl; evil flowUrl refused; same version -> info; bad format -> error
+  const mk93 = (ver) => { const c = makeCtx(); c.stores.default.WPU = {}; c.stores.memory.WPU_localFlows = local; return c; };
+  let c3 = mk93();
+  let r = c3.run('wpu0093', { statusCode: 200, payload: { version: '4.11.0', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
+  ok(r[0] && r[0].url.endsWith('/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json') && r[0].method === 'GET', 'newer -> download msg', r[0] && r[0].url);
+  ok(c3.stores.default.WPU.selfLatest.version === '4.11.0', 'selfLatest stored');
+  c3 = mk93();
+  r = c3.run('wpu0093', { statusCode: 200, payload: { version: '4.11.0', flowUrl: 'https://evil.example/x.json' } });
+  ok(r[2] && /outside the HeishamonNR-update-tab repo/.test(r[2].payload) && !r[0], 'evil flowUrl refused');
+  c3 = mk93();
+  r = c3.run('wpu0093', { statusCode: 200, payload: { version: '4.10.4', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
+  ok(r[1] && /already up to date/.test(r[1].payload) && !r[0], 'same version -> info, no download');
+  c3 = mk93();
+  r = c3.run('wpu0093', { statusCode: 200, payload: { version: '4.11-beta', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
+  ok(r[2] && /unexpected version format/.test(r[2].payload), 'non-X.Y.Z refused');
+  // wpu0095: validation rules
+  const newTab = JSON.parse(JSON.stringify(tab.filter(n => String(n.id).startsWith('wpu'))));
+  newTab.find(n => n.id === 'wpu-tab-0001').version = '4.11.0';
+  const c4 = makeCtx();
+  c4.stores.default.WPU = { selfLatest: { version: '4.11.0', flowUrl: 'x', checkedAt: Date.now() } };
+  let r4 = c4.run('wpu0095', { statusCode: 200, payload: newTab, url: 'u' });
+  ok(Array.isArray(c4.stores.memory.WPU_newTab) && r4[0].url === 'http://127.0.0.1:1880/nodes' && r4[0].headers.Accept === 'application/json', 'valid tab -> palette request', r4[0] && r4[0].url);
+  const evilTab = JSON.parse(JSON.stringify(newTab)); evilTab.push({ id: 'notwpu123', type: 'inject', z: 'wpu-tab-0001', wires: [] });
+  const c5 = makeCtx(); c5.stores.default.WPU = { selfLatest: { version: '4.11.0' } };
+  r4 = c5.run('wpu0095', { statusCode: 200, payload: evilTab, url: 'u' });
+  ok(r4[1] && /non-wpu node ids/.test(r4[1].payload) && !c5.stores.memory.WPU_newTab, 'non-wpu id -> refused, nothing stored');
+  const wrongVer = JSON.parse(JSON.stringify(newTab)); wrongVer.find(n => n.id === 'wpu-tab-0001').version = '9.9.9';
+  const c6 = makeCtx(); c6.stores.default.WPU = { selfLatest: { version: '4.11.0' } };
+  r4 = c6.run('wpu0095', { statusCode: 200, payload: wrongVer, url: 'u' });
+  ok(r4[1] && /9.9.9/.test(r4[1].payload) && /4.11.0/.test(r4[1].payload), 'version mismatch -> refused');
+  // wpu0096: wpu-only merge against real package + tab
+  const c7 = makeCtx();
+  c7.stores.default.WPU = { rev: 'rev77', apiV2: true, selfLatest: { version: '4.11.0' } };
+  c7.stores.memory.WPU_localFlows = local;
+  c7.stores.memory.WPU_newTab = newTab;
+  const types = [...new Set(newTab.filter(n => n.type && !['tab','subflow','group','junction'].includes(n.type) && !n.type.startsWith('subflow:')).map(n => n.type))];
+  const pal = [{ nodes: types.map(t => ({ type: t, types: [t], enabled: true })) }];
+  const r7 = c7.run('wpu0096', { statusCode: 200, payload: pal });
+  ok(r7[1] === null, 'no error on valid self-merge', r7[1] && r7[1].payload);
+  const post = r7[0];
+  ok(post.url === 'http://127.0.0.1:1880/flows' && post.method === 'POST' && post.headers['Node-RED-Deployment-Type'] === 'full' && post.payload.rev === 'rev77', 'POST loopback, full, rev');
+  const merged = post.payload.flows;
+  const mids = merged.map(n => n.id);
+  ok(new Set(mids).size === mids.length, 'no duplicate ids after self-merge');
+  const nonWpuLocal = local.filter(n => !String(n.id).startsWith('wpu'));
+  ok(nonWpuLocal.every(n => mids.includes(n.id)), 'ALL non-wpu local nodes (real package + personal tab) preserved');
+  ok(merged.filter(n => String(n.id).startsWith('wpu')).length === newTab.length, 'wpu set == new tab exactly');
+  ok(merged.some(n => n.id === 'mytab1') && merged.some(n => n.id === '92e5b2c.00a8b5'), 'personal tab + broker untouched');
+  ok(post._mergeStats && post._mergeStats.ongewijzigd + post._mergeStats.bijgewerkt + post._mergeStats.nieuw + post._mergeStats.verwijderd === local.filter(n => String(n.id).startsWith('wpu')).length, 'stats add up to old wpu count', post._mergeStats);
+  ok(r7[2] && /wp-preupdate-flows-/.test(r7[2].filename), 'pre-update snapshot emitted');
+  // palette missing a type -> refuse
+  const c8 = makeCtx();
+  c8.stores.default.WPU = { rev: 'r', apiV2: true };
+  c8.stores.memory.WPU_localFlows = local;
+  c8.stores.memory.WPU_newTab = newTab;
+  const pal2 = [{ nodes: types.filter(t => t !== 'ui_button').map(t => ({ type: t, types: [t], enabled: true })) }];
+  const r8 = c8.run('wpu0096', { statusCode: 200, payload: pal2 });
+  ok(r8[1] && /ui_button/.test(r8[1].payload) && r8[0] === null, 'missing palette type refuses BEFORE POST');
 }
 
 console.log('\n==============================');

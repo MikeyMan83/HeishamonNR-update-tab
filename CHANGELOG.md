@@ -2,7 +2,20 @@
 
 All dates are 21 Nov 2026: this tab was built, reviewed and hardened in one day. Key facts per version: the button behaviour and merge rules are stable since v4.6; earlier versions are mostly of historical interest.
 
-## v4.10.4 (current, 76 nodes)
+## v4.11.0 (current, 83 nodes)
+
+**Self-update of the updater itself** ("Update the updater" button, `wpu0090`, topic `selfupdate`):
+
+- Version check against a new pinned `version.json` in this repo (`raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/version.json`), compared with the new `version` field on the `wpu-tab-0001` tab node (X.Y.Z only; unknown local version = allowed, the button press is explicit).
+- Download of `update-tab.json` with the flowUrl **allowlisted to this repo**; validation before merge: JSON array, every id `wpu`-prefixed (the merge can only touch its own tab), unique ids, must contain `wpu-tab-0001`, and the tab version must match version.json (wrong file / forgotten bump = refused, nothing changed).
+- Palette pre-flight via a second `GET /nodes` (`wpu0097`), then the wpu-only merge (`wpu0096`): drop all local `wpu*` nodes, append the validated new tab; duplicate-id sanity check; merge statistics (new/updated/removed/unchanged) to the Node-RED log and the deploy toast via `_mergeStats`; pre-update snapshot (`wp-preupdate-flows-*`) before the atomic `POST /flows` with rev + `Deployment-Type: full` (reuses `wpu0023`/`wpu0031`/`wpu0057`).
+- Logging: `[WP Update] self-update available: old -> new`, validated node count, NEW/UPDATED/REMOVED node lists, and the POST line with rev.
+- Safety: loopback/`WPU_ADMIN_BASE` admin base as always; the wpu-only scope means the self-update can never touch the HeishaMoNR package, personal tabs or broker configs; rollback = older `update-tab.json` from this repo git history + the pre-update snapshot. Trust note: the pinned repo ships executable flow code, so protect the repo/branch.
+- `version.json` added to this repo (bump per release).
+
+Validation: harness 142/142 green (`node test/harness.js`, +20 self-update asserts: phase routing, pinned URL, allowlist refusal, X.Y.Z refusal, already-latest info, wpu-only validation rules, version-mismatch refusal, wpu-only merge preserving the whole real 26.5.1 package + personal tab + broker, stats consistency, snapshot, palette refusal); live loopback deploy of v4.11 on Node-RED 5.0.10: 83 wpu nodes, tab `version` field survives the `GET /flows` round-trip, `/wpupdate/*` endpoints unaffected.
+
+## v4.10.4 (76 nodes)
 
 UI language unified to **English**, consistent with the edterbak package (its dashboard is English: "Home", "Inlet actual", "SET/RESET", "Version X.Y.Z Stable"): all dashboard labels, tooltips, editor node names, toast/status messages, endpoint error JSONs and Node-RED log lines translated (75 node fields + 88 string literals). Node ids, topics-as-keys and code comments unchanged. Harness assertions updated to the English strings: **122/122** green.
 
