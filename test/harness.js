@@ -61,9 +61,10 @@ function makeCtx(opts = {}) {
     keys: () => Object.keys(gstores.default)
   };
   const env = { get: (k) => envMap[k] };
-  const node = { status() {}, log() {}, warn() {}, error() {} };
-  const run = (id, msg) => new Function('msg', 'node', 'flow', 'global', 'env', 'RED', funcs[id])(msg, node, flow, global, env, RED);
-  return { run, flow, global, stores, gstores, envMap, RED };
+  const nodeLogs = [];
+  const node = { status() {}, log: m => nodeLogs.push(['log', String(m)]), warn: m => nodeLogs.push(['warn', String(m)]), error: m => nodeLogs.push(['error', String(m)]) };
+  const run = (id, msg) => { nodeLogs.length = 0; return new Function('msg', 'node', 'flow', 'global', 'env', 'RED', funcs[id])(msg, node, flow, global, env, RED); };
+  return { run, flow, global, stores, gstores, envMap, RED, nodeLogs };
 }
 
 // local "installed" package: real 26.5.1 + locally configured broker + personal tab + own env var + the updater tab itself
@@ -556,6 +557,18 @@ section('T19 v4.11.1 network-catch hygiene (feedback on network errors)');
   const fileNodes = all.filter(n => n.type === 'file' || n.type === 'file in').map(n => n.id);
   const uncaughtFiles = fileNodes.filter(id => !(catch56.scope || []).includes(id));
   ok(uncaughtFiles.length === 0, 'every file node is in catch wpu0056 scope', uncaughtFiles);
+}
+
+section('T20 v4.11.2 deploy log hygiene (every deploy outcome leaves an audit trail)');
+{
+  const c = makeCtx();
+  c.run('wpu0031', { statusCode: 200, payload: {} });
+  ok(c.nodeLogs.some(l => l[0] === 'log' && /deploy OK/.test(l[1])), 'successful deploy logs an OK line (the success toast may be lost when the flow replaces itself)');
+  ok(!c.nodeLogs.some(l => l[0] === 'warn'), 'success produces no warn');
+  const o409 = c.run('wpu0031', { statusCode: 409, payload: { error: 'version mismatch' } });
+  ok(o409.topic === 'WP Update error' && c.nodeLogs.some(l => l[0] === 'warn' && /409/.test(l[1]) && /version mismatch/.test(l[1])), '409 rev conflict warns with the response body + error toast');
+  const o500 = c.run('wpu0031', { statusCode: 500, payload: 'boom' });
+  ok(o500.topic === 'WP Update error' && c.nodeLogs.some(l => l[0] === 'warn' && /500/.test(l[1]) && /boom/.test(l[1])), 'generic deploy failure warns with status + body (the toast\'s "full message in the Node-RED log" is now true)');
 }
 
 console.log('\n==============================');
