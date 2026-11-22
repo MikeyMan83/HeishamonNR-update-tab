@@ -2,7 +2,17 @@
 
 All dates are 21 Nov 2026: this tab was built, reviewed and hardened in one day. Key facts per version: the button behaviour and merge rules are stable since v4.6; earlier versions are mostly of historical interest.
 
-## v4.11.1 (current, 83 nodes)
+## v4.11.2 (current, 83 nodes)
+
+Error-reporting audit (question: "are errors properly logged and shown on screen?"). Systematic trace of every failure path:
+
+- **On screen, complete**: every error class (admin login, read flows, download, network, merge/deploy prep, inspection, snapshot, restore, file read, self-update validate/merge, flowdl dump) reaches the error hub `wpu074` -> `wpu0040`, which sets the persistent **Status** field on the dashboard (`wpu0009`), broadcasts a toast (`wpu0035`, 5 s, top-right) and writes a `node.warn` to the Node-RED log. The Status field keeps the last error readable long after the toast is gone.
+- **One gap closed**: the deploy *response* (checked by `wpu0031`) produced a toast + Status for 409 rev conflicts and failed POSTs, but wrote NOTHING to the container log — while the toast text claimed "full message in the Node-RED debug/log". A successful deploy was not in the log either, so when the success toast was lost to the flow self-replacing itself there was no confirmation line at all.
+- Fix in `wpu0031`: success logs `[WP Update] deploy OK (HTTP …)`; 409 and generic failures `node.warn` the status + the Admin API response body (truncated to 300 chars). The toast's log reference is now true.
+- Harness: `makeCtx` now captures `node.log/warn/error`, new section **T20** (success-OK-line, no-warn-on-success, 409-warn-with-body, generic-fail-warn-with-body) -> **149/149** (4 new asserts).
+- Tab node `version` and `version.json` bumped to 4.11.2.
+
+## v4.11.1 (83 nodes)
 
 Post-v4.11 sanity check (full audit of HEAD: structure, English claim, self-update chain): the tab itself, the validation rules and the wpu-only merge are sound. One real gap found: the three new self-update `http request` nodes (`wpu0092` version.json, `wpu0094` update-tab.json, `wpu0097` palette GET /nodes) were **not in the catch scope of `wpu0059`**, so a network-level failure (DNS, GitHub unreachable, timeout) stopped the chain with no toast at all — only a silent "no catch node" line in the Node-RED log. Every http request node had been covered since the v4.7 fix; v4.11.0 added these three without extending the scope.
 
