@@ -544,6 +544,20 @@ section('T18 v4.11 self-update: phase, pinned version.json, validation, wpu-only
   ok(r8[1] && /ui_button/.test(r8[1].payload) && r8[0] === null, 'missing palette type refuses BEFORE POST');
 }
 
+section('T19 v4.11.1 network-catch hygiene (feedback on network errors)');
+{
+  const all = Array.isArray(tab) ? tab : tab.nodes;
+  const httpNodes = all.filter(n => n.type === 'http request').map(n => n.id);
+  const catch59 = all.find(n => n.id === 'wpu0059');
+  ok(catch59 && Array.isArray(catch59.scope), 'catch wpu0059 exists with an explicit scope');
+  const uncaught = httpNodes.filter(id => !(catch59.scope || []).includes(id));
+  ok(uncaught.length === 0, 'every http request node is in catch wpu0059 scope (network errors produce a readable toast, never silence)', uncaught);
+  const catch56 = all.find(n => n.id === 'wpu0056');
+  const fileNodes = all.filter(n => n.type === 'file' || n.type === 'file in').map(n => n.id);
+  const uncaughtFiles = fileNodes.filter(id => !(catch56.scope || []).includes(id));
+  ok(uncaughtFiles.length === 0, 'every file node is in catch wpu0056 scope', uncaughtFiles);
+}
+
 console.log('\n==============================');
 console.log('TOTAL: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
