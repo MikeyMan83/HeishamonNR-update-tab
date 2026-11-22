@@ -587,13 +587,13 @@ section('T21 v4.12: dashboard sections, updater check-then-apply UX, response-no
   const byid = Object.fromEntries(tab.map(n => [n.id, n]));
   const groups = tab.filter(n => n.type === 'ui_group');
   const gnames = groups.map(g => g.name + ':' + g.order).sort();
-  ok(groups.length === 4 && gnames.join('|') === 'Admin:4|Backup & export:3|Update:1|Updater:2', 'four dashboard groups Update/Updater/Backup & export/Admin in order 1-4', gnames);
+  ok(groups.length === 2 && gnames.join('|') === 'Backup & admin:2|Update:1', 'exactly two dashboard groups: Update (order 1) and Backup & admin (order 2)', gnames);
   const widgetGroups = new Set(groups.map(g => g.id));
   const widgets = tab.filter(n => String(n.type).startsWith('ui_') && n.type !== 'ui_tab' && n.type !== 'ui_group' && n.type !== 'ui_toast');
   ok(widgets.every(w => widgetGroups.has(w.group)), 'every dashboard widget is assigned to a section group', widgets.filter(w => !widgetGroups.has(w.group)).map(w => w.id));
-  ok(byid['wpu00a0'] && byid['wpu00a0'].type === 'ui_button' && byid['wpu00a0'].topic === 'selfcheck' && JSON.stringify(byid['wpu00a0'].wires) === '[["wpu0010"]]' && byid['wpu00a0'].group === 'wpu-ui-grp2', 'Check updater version button (topic selfcheck) in Updater group wired to wpu0010');
-  ok(byid['wpu00a1'] && byid['wpu00a1'].type === 'ui_text' && byid['wpu00a1'].group === 'wpu-ui-grp2' && byid['wpu00a1'].format === '{{msg.payload}}', 'Updater version display ui_text in Updater group');
-  ok(byid['wpu0090'] && byid['wpu0090'].topic === 'selfupdate' && byid['wpu0090'].group === 'wpu-ui-grp2', 'Update the updater button (topic selfupdate) in Updater group');
+  ok(byid['wpu00a0'] && byid['wpu00a0'].type === 'ui_button' && byid['wpu00a0'].topic === 'selfcheck' && JSON.stringify(byid['wpu00a0'].wires) === '[["wpu0010"]]' && byid['wpu00a0'].group === 'wpu-ui-grp', 'Check tab version button (topic selfcheck) in Update column wired to wpu0010');
+  ok(byid['wpu00a1'] && byid['wpu00a1'].type === 'ui_text' && byid['wpu00a1'].group === 'wpu-ui-grp' && byid['wpu00a1'].format === '{{msg.payload}}', 'Tab version display ui_text in Update column');
+  ok(byid['wpu0090'] && byid['wpu0090'].topic === 'selfupdate' && byid['wpu0090'].group === 'wpu-ui-grp', 'Update this tab button (topic selfupdate) in Update column');
   ok(byid['wpu0093'] && byid['wpu0093'].outputs === 3 && JSON.stringify(byid['wpu0093'].wires) === '[["wpu0094"],["wpu00a1"],["wpu074"]]', 'wpu0093 wires: out1 download, out2 version display, out3 error hub');
   ok(byid['wpu0015'] && byid['wpu0015'].outputs === 5 && JSON.stringify(byid['wpu0015'].wires[4]) === '["wpu0092"]', 'wpu0015 out5 -> wpu0092 (pinned updater version.json)');
   for (const nid of ['wpu0029', 'wpu0085']) {
@@ -615,13 +615,14 @@ section('T21 v4.12: dashboard sections, updater check-then-apply UX, response-no
   ok(leaks.length === 0, 'no Dutch left in user-visible node fields (name/label/tooltip/ok/cancel)', leaks);
 }
 
-// ---------------- T22: v4.12.2 compact half-width sections, English comments/stats ----------------
-section('T22 v4.12.2: compact half-width sections (6 units), full 6-wide rows, English comments/stats');
+// ---------------- T22: v4.12.3 two-column layout, no truncated labels, consistent terminology ----------------
+section('T22 v4.12.3: two fixed columns (2 groups of 6 units), full-width rows, no label truncation, consistent terminology');
 {
   const byid = Object.fromEntries(tab.map(n => [n.id, n]));
   const groups = tab.filter(n => n.type === 'ui_group');
   const widgets = tab.filter(n => String(n.type).startsWith('ui_') && n.type !== 'ui_tab' && n.type !== 'ui_group' && n.type !== 'ui_toast');
-  ok(groups.length === 4 && groups.every(g => Number(g.width) === 6), 'all four sections are compact half-width blocks (6 units: two sections per row on a desktop browser, DB1 default grid)', groups.map(g => g.width));
+  ok(groups.length === 2 && groups.every(g => Number(g.width) === 6), 'exactly two groups of width 6: the tab always renders as two columns side by side (half screen), one column on narrow screens', groups.map(g => g.name + ':' + g.width));
+  ok(widgets.every(w => groups.some(g => g.id === w.group)), 'every dashboard widget belongs to one of the two columns', widgets.filter(w => !groups.some(g => g.id === w.group)).map(w => w.id));
   const ragged = [];
   for (const g of groups) {
     const gw = Number(g.width) || 12; // ui_group exports width as a string ("6")
@@ -635,11 +636,24 @@ section('T22 v4.12.2: compact half-width sections (6 units), full 6-wide rows, E
     if (used !== 0) full = false;
     if (!full) ragged.push(g.name);
   }
-  ok(ragged.length === 0, 'every section packs into full 6-wide rows (no ragged wrapping)', ragged);
-  ok(byid['wpu0001'].width === 3 && byid['wpu0003'].width === 3 && byid['wpu0007'].width === 3 && byid['wpu0008'].width === 3 && byid['wpu0009'].width === 6, 'Update section (6): Check(3)+RUN(3), Installed(3)+Available(3), Status full width (6)');
-  ok(byid['wpu00a0'].width === 3 && byid['wpu0090'].width === 3 && byid['wpu00a1'].width === 6, 'Updater section (6): two buttons on one row, Updater field full width');
-  ok(byid['wpu0049'].width === 3 && byid['wpu0080'].width === 3 && byid['wpu0058'].width === 6, 'Backup & export (6): Backup(3)+Restore(3), Confirm(3)+Download(3), Backup folder(6) full row');
-  ok(byid['wpu0005'].width === 6 && byid['wpu0006'].width === 6, 'Admin section (6): user and password each a full row');
+  ok(ragged.length === 0, 'every column packs into full 6-wide rows (no ragged wrapping)', ragged);
+  const btns = widgets.filter(w => w.type === 'ui_button');
+  ok(btns.every(b => b.width === 6), 'every button is a full-width 6-unit row (no width-3 truncated labels like "CHECK UPDATER VER")', btns.map(b => b.name + ':w' + b.width));
+  ok(byid['wpu0007'].width === 3 && byid['wpu0008'].width === 3 && byid['wpu0007'].order === byid['wpu0008'].order, 'Installed + Available share one 3+3 row');
+  const tooLong = widgets.filter(w => typeof w.label === 'string' && w.label.length > (Number(w.width) === 3 ? 12 : 24)).map(w => w.id + ':' + w.label);
+  ok(tooLong.length === 0, 'every visible label fits its widget width (DB1 truncates long labels with an ellipsis)', tooLong);
+  const div = id => byid[id] && byid[id].type === 'ui_template' && byid[id].templateScope === 'local' && byid[id].storeOutMessages === false && byid[id].fwdInMessages === false && /<hr/.test(byid[id].format || '');
+  ok(div('wpu00c0') && byid['wpu00c0'].group === 'wpu-ui-grp' && byid['wpu00c0'].order === 5, 'Tab updater divider (Ed-style hr template, local scope, inert) in the Update column');
+  ok(div('wpu00c1') && byid['wpu00c1'].group === 'wpu-ui-grp3' && byid['wpu00c1'].order === 6, 'Admin divider (Ed-style hr template) in the Backup & admin column');
+  const colCount = g => widgets.filter(w => w.group === g).length;
+  ok(colCount(groups[0].id) === 9 && colCount(groups[1].id) === 8, 'Update column holds 9 widgets (8 rows + Tab updater divider), Backup & admin holds 8 (7 rows + Admin divider)', [colCount(groups[0].id), colCount(groups[1].id)]);
+  const expected = { wpu0001: 'Check for updates', wpu00a0: 'Check tab version', wpu0090: 'Update this tab', wpu0002: 'Back up settings', wpu0048: 'Restore backup', wpu0049: 'Confirm restore', wpu0080: 'Download flows' };
+  const mism = Object.entries(expected).filter(([id, nm]) => byid[id].name !== nm || byid[id].label !== nm).map(([id]) => id + '=' + byid[id].name);
+  ok(mism.length === 0, 'button wording is the agreed consistent set', mism);
+  const badTerm = widgets.filter(w => w.type !== 'ui_template' && ((typeof w.label === 'string' && /updater/i.test(w.label)) || (typeof w.name === 'string' && /updater/i.test(w.name)))).map(w => w.id + ':' + (w.label || w.name));
+  ok(badTerm.length === 0, 'user-facing labels use the "tab" wording (no stray "updater" labels)', badTerm);
+  const withOpt = widgets.filter(w => typeof w.label === 'string' && w.label.includes('(optional)')).map(w => w.label).sort();
+  ok(withOpt.length === 3 && withOpt.join('|') === 'Backup folder (optional)|Password (optional)|User (optional)', 'exactly three optional inputs, all consistently suffixed "(optional)", Admin inputs shortened inside the Admin sub-section', withOpt);
   const f30 = byid['wpu0030'].func, f96 = byid['wpu0096'].func, f31 = byid['wpu0031'].func;
   ok(/added: stNew\.length/.test(f30) && /unchanged: stSame/.test(f30) && !/\bnieuw:/.test(f30), 'wpu0030 _mergeStats uses English keys (added/updated/removed/unchanged)');
   ok(/added: stNew\.length/.test(f96) && !/\bnieuw:/.test(f96), 'wpu0096 self-merge stats use English keys');
