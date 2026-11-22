@@ -1,4 +1,14 @@
-## v4.12.3 (current, 98 nodes)
+## v4.12.4 (current, 99 nodes)
+
+Drives two live findings after the first real self-update in production: (1) a raw.githubusercontent CDN edge served the v4.12.2 file hours after the v4.12.3 push, so the tab kept offering an update that was (or should have been) running already — "after update it still shows that i have to update"; (2) the two update concepts were still both just called "update".
+
+- **CDN cache-busters on every pinned raw fetch**: this repo's `version.json`, the self-update `update-tab.json` download, the package `version.json` and the package `flowUrl` all now append `?cb=<epoch>` at fetch time, so a stale CDN edge can never serve an outdated version comparison again. The allowlist validation still checks the clean stored URL (the buster is added only when the request is built).
+- **Boot refresh of the Tab version field**: a once-per-start inject sets the field to `"Running: <version>"` 15 seconds after every flow start, so after a restart or a self-update the field shows the truth instead of a stale "(update!)" from the last check. The harness asserts the payload stays equal to the tab node version and `version.json`.
+- **Flow vs tab terminology** (user-visible strings and buttons): the package is now consistently "the flow" and this dashboard tab is "the tab" — [Check for updates] -> [Check flow version], [Run update] -> [Update flow], Status -> Flow status, [Update this tab] -> [Update tab], divider caption "Tab updater" -> "This tab". All in-flow messages swept: several user-facing errors still pointed at pre-v4.12 button names ("[Check for update] and [RUN UPDATE]"); the deploy messages are now phase-aware ("Tab update succeeded: ..." vs "Flow update succeeded: ...", each with an appropriate closing line; wpu0096 tags its POST with `_phase: "selfupdate"`).
+- Harness: T21/T22 moved to the new wording, new section **T23** (buster on all four fetches, boot-inject sync, phase-aware deploy texts, zero stale vocabulary, node count) -> **196/196**.
+- Nodes: 99 (one inject added).
+
+## v4.12.3 (98 nodes)
 
 Layout and wording, driven by a live screenshot of the tab in the dashboard: on a wide screen node-red-dashboard had placed all four width-6 sections next to each other in a single row, and the width-3 button labels rendered truncated ("CHECK UPDATER VER", "UPDATE THE UPDATE").
 
