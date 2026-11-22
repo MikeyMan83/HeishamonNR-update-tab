@@ -1,0 +1,100 @@
+[
+  {
+    "id": "wprh-tab-0001",
+    "type": "tab",
+    "label": "WP Restore helper (delete after use)",
+    "disabled": false,
+    "info": "Emergency restore for HeishaMoNR settings from a locally downloaded wp-backup-*.json.\n\nUse when Node-RED runs but the [WP Update] tab itself is broken (or you want to restore without it): the ONLY copy of the backup is then the file you downloaded to your own PC with [Back up settings].\n\nSteps: 1) Import this flow and Deploy. 2) From the PC with the download: curl -X POST -H \"Content-Type: application/json\" --data-binary \"@wp-backup-....json\" http://<node-red-host>:1880/wpupdate/restore-helper 3) Check the WP dashboard and the critical settings. 4) DELETE this flow again: it listens on the LAN without authentication.\n\nDefault Node-RED settings accept POST bodies up to apiMaxLength (default 5 MB; settings-backups normally fit).\nRestore semantics are identical to the tab's own [Restore backup]: every key in the backup overwrites the current value, keys that exist now but not in the backup stay, WPU_ state is never restored.",
+    "env": []
+  },
+  {
+    "id": "wprh0001",
+    "type": "http in",
+    "z": "wprh-tab-0001",
+    "name": "POST /wpupdate/restore-helper",
+    "url": "/wpupdate/restore-helper",
+    "method": "post",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 220,
+    "y": 100,
+    "wires": [
+      [
+        "wprh0002"
+      ]
+    ]
+  },
+  {
+    "id": "wprh0002",
+    "type": "function",
+    "z": "wprh-tab-0001",
+    "name": "apply local backup download",
+    "func": "// [WP Restore helper] apply the local wp-backup-*.json download\n// Send from your PC with:\n//   curl -X POST -H \"Content-Type: application/json\" --data-binary \"@wp-backup-....json\" http://<node-red-host>:1880/wpupdate/restore-helper\n// Same merge semantics as the tab's internal [Restore backup] (wpu0055):\n// every key in the backup overwrites the current value, keys that exist now\n// but not in the backup stay, own WPU_ state is never restored.\n// NO authentication (http nodes sit outside adminAuth): import, use, delete.\nlet b = msg.payload;\nif (typeof b === \"string\") {\n    try { b = JSON.parse(b); } catch (e) { b = null; }\n} else if (typeof Buffer !== \"undefined\" && Buffer.isBuffer(b)) {\n    try { b = JSON.parse(b.toString(\"utf8\")); } catch (e) { b = null; }\n} else if (b && typeof b === \"object\" && b.type === \"Buffer\" && Array.isArray(b.data)) {\n    try { b = JSON.parse(Buffer.from(b.data).toString(\"utf8\")); } catch (e) { b = null; }\n}\nif (!b || typeof b !== \"object\" || !b.globalContext || typeof b.globalContext !== \"object\") {\n    msg.statusCode = 400;\n    msg.payload = \"Not a valid wp-backup file (JSON with a globalContext object). Nothing changed.\";\n    return msg;\n}\nconst gen = (b.meta && b.meta.generated) ? String(b.meta.generated).slice(0, 19) : \"unknown\";\nlet count = 0;\nconst skipped = [];\nfor (const k of Object.keys(b.globalContext)) {\n    if (k.indexOf(\"WPU_\") === 0) { skipped.push(k); continue; }\n    try { global.set(k, b.globalContext[k]); count++; } catch (e) { skipped.push(k); }\n}\nnode.warn(\"[WP Restore helper] \" + count + \" settings keys restored from the backup of \" + gen + (skipped.length ? \"; skipped: \" + skipped.join(\", \") : \"\") + \". Delete this helper flow when done.\");\nmsg.statusCode = 200;\nmsg.payload = \"Restored \" + count + \" settings keys from backup of \" + gen + \". Check the WP dashboard and the critical settings (trigger/revert values). Then DELETE this helper flow: it listens on the LAN without authentication.\";\nreturn msg;",
+    "outputs": 1,
+    "timeout": "",
+    "timeoutType": "str",
+    "timeoutUnits": "seconds",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 440,
+    "y": 100,
+    "wires": [
+      [
+        "wprh0003"
+      ]
+    ]
+  },
+  {
+    "id": "wprh0004",
+    "type": "catch",
+    "z": "wprh-tab-0001",
+    "name": "helper runtime errors",
+    "scope": [
+      "wprh0001",
+      "wprh0002"
+    ],
+    "uncaught": false,
+    "x": 220,
+    "y": 180,
+    "wires": [
+      [
+        "wprh0005"
+      ]
+    ]
+  },
+  {
+    "id": "wprh0005",
+    "type": "function",
+    "z": "wprh-tab-0001",
+    "name": "error as HTTP 500",
+    "func": "// [WP Restore helper] surface a runtime error as a readable response\nmsg.statusCode = 500;\nmsg.payload = \"WP Restore helper error: \" + ((msg.error && msg.error.message) ? msg.error.message : \"unknown error\") + \". Nothing restored unless you saw a success line; check the Node-RED log and try again.\";\nreturn msg;",
+    "outputs": 1,
+    "timeout": "",
+    "timeoutType": "str",
+    "timeoutUnits": "seconds",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 440,
+    "y": 180,
+    "wires": [
+      [
+        "wprh0003"
+      ]
+    ]
+  },
+  {
+    "id": "wprh0003",
+    "type": "http response",
+    "z": "wprh-tab-0001",
+    "name": "",
+    "statusCode": "",
+    "headers": {},
+    "x": 660,
+    "y": 140,
+    "wires": []
+  }
+]

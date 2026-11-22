@@ -1,3 +1,11 @@
+## restore-helper.json (companion, no tab version bump)
+
+Disaster recovery from the LOCAL backup download (user feedback: the browser download is the only copy you can still reach when everything else is gone; the on-disk backups and [Restore backup] require a living tab, the local file does not):
+
+- **restore-helper.json** is a small companion flow (6 nodes, wprh-prefixed ids, never wpu) for the worst case: Node-RED still runs but the tab does not (or you choose not to use it). Import it, deploy, POST the local download, delete the flow again. Same merge semantics as the tab's own [Restore backup] (wpu0055): every backup key overwrites the current value, keys that exist now but not in the backup stay, WPU_ state is never restored. Parse accepts object, string and Buffer bodies; invalid input answers 400 and restores nothing.
+- Endpoint: POST /wpupdate/restore-helper, e.g. `curl -X POST -H "Content-Type: application/json" --data-binary "@wp-backup-....json" http://<node-red-host>:1880/wpupdate/restore-helper`. Node-RED accepts http-in bodies up to apiMaxLength (default 5 MB, verified in the 5.0.10 21-httpin.js source); settings backups fit. The endpoint is deliberately token-free but unauthenticated (http nodes sit outside adminAuth), hence the delete-after-use warning.
+- No tab version bump: update-tab.json is untouched (still v4.12.7, 98 nodes), the running tab keeps reporting "up to date". README gained a "Manual restore of a local backup (worst case)" section with the full procedure. Harness: new T25 (+11 checks: structure, wprh id rules, mocked restore incl. string/Buffer/400) -> **222/222**.
+
 ## v4.12.7 (current, 98 nodes)
 
 Download discoverability (user feedback: click Back up settings / Download flows and "the browser does nothing"; the only download path was a private toast that disappeared after 10 seconds):

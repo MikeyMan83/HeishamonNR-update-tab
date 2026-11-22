@@ -2,8 +2,8 @@
 
 An importable Node-RED tab for [HeishaMoNR](https://github.com/edterbak/HeishaMoNR) that reduces every package update to a few dashboard clicks: **Check for updates**, **Back up settings**, **Restore backup**, **Update flow**, plus **Download flows** for a full flow export. No scripts, no SSH: the tab talks to Node-RED's own Admin API from inside the flow, and follows the in-flow Admin API precedent that the flow already sets (the GUI_01/GUI_02 tab-toggle uses `PUT /flow/:id`).
 
-- Flow file: [`update-tab.json`](update-tab.json), v4.12.5, 99 nodes (one flow tab with its own `ui_tab` and two `ui_group` columns; all node ids prefixed `wpu`, so an import never collides with package ids).
-- Verified against the real 26.3.1 and 26.5.1 packages: 127/127 automated checks green on v4.7; v4.8 (security fixes, see [CHANGELOG.md](CHANGELOG.md)) re-validated structurally; v4.8.1 re-ran the harness after a source-verified review: 91/91; v4.9 (merge reporting) 99/99; v4.10 (flow download) 117/117; v4.10.1 (clickable toast links) 121/121; v4.10.2 (link hygiene, source-verified) 122/122; v4.10.4 (English UI) 122/122; v4.11 (self-update of the updater) 142/142; v4.11.1 (network-catch hygiene) 145/145; v4.11.2 (deploy-log hygiene) 149/149; v4.12.0 (sectional dashboard, updater check-then-apply UX, remaining Dutch translated) 167/167; v4.12.1 (consistent full-width grid, English comments and stats keys, download-fix claim corrected) 176/176; v4.12.2 (compact half-width sections per user feedback; half-screen blocks instead of stretched full-width groups) 178/178; v4.12.3 (two-column layout with Ed-style dividers, consistent wording, no truncated labels) 184/184; v4.12.4 (flow vs tab terminology, CDN cache-busters on all pinned raw fetches, boot refresh of the Tab version field, phase-aware deploy messages) 196/196; v4.12.5 (editor-canvas tidy: no same-cell collisions, all nodes on-grid) 198/198; v4.12.6 (single [Check for updates] button: one click refreshes both the flow check and the tab check) 208/208; v4.12.7 (download toasts open 60 seconds instead of 10, click-here-to-download line) 211/211 (see the test report).
+- Flow file: [`update-tab.json`](update-tab.json), v4.12.7, 98 nodes (one flow tab with its own `ui_tab` and two `ui_group` columns; all node ids prefixed `wpu`, so an import never collides with package ids).
+- Verified against the real 26.3.1 and 26.5.1 packages: 127/127 automated checks green on v4.7; v4.8 (security fixes, see [CHANGELOG.md](CHANGELOG.md)) re-validated structurally; v4.8.1 re-ran the harness after a source-verified review: 91/91; v4.9 (merge reporting) 99/99; v4.10 (flow download) 117/117; v4.10.1 (clickable toast links) 121/121; v4.10.2 (link hygiene, source-verified) 122/122; v4.10.4 (English UI) 122/122; v4.11 (self-update of the updater) 142/142; v4.11.1 (network-catch hygiene) 145/145; v4.11.2 (deploy-log hygiene) 149/149; v4.12.0 (sectional dashboard, updater check-then-apply UX, remaining Dutch translated) 167/167; v4.12.1 (consistent full-width grid, English comments and stats keys, download-fix claim corrected) 176/176; v4.12.2 (compact half-width sections per user feedback; half-screen blocks instead of stretched full-width groups) 178/178; v4.12.3 (two-column layout with Ed-style dividers, consistent wording, no truncated labels) 184/184; v4.12.4 (flow vs tab terminology, CDN cache-busters on all pinned raw fetches, boot refresh of the Tab version field, phase-aware deploy messages) 196/196; v4.12.5 (editor-canvas tidy: no same-cell collisions, all nodes on-grid) 198/198; v4.12.6 (single [Check for updates] button: one click refreshes both the flow check and the tab check) 208/208; v4.12.7 (download toasts open 60 seconds instead of 10, click-here-to-download line) 211/211; restore-helper.json companion (manual restore of the local backup download, +11 checks) 222/222 (see the test report).
 - Live smoke-tested in Node-RED 5.0.1 with node-red-dashboard DB1 (what the HeishaMoNR package runs on): imports without a single editor warning.
 
 ## Why
@@ -44,6 +44,28 @@ The tab tries `version.json` first; if absent, the repo scan follows; only if bo
 2b. (v4.11+) No further imports needed: **Check for updates** also shows the tab's `current -> available` in the Tab version field (one click, both checks); **Update tab** then keeps this tab itself current from this repo.
 3. Press **Check for updates**. If Available shows "26.5.1 (update!)": **Back up settings**, then **Update flow**. (The same click also refreshes the Tab version field.)
 4. After the deploy the flows restart: refresh the dashboard and check the new version on [WP Home].
+
+## Manual restore of a local backup (worst case)
+
+The browser download from [Back up settings] is not a convenience extra: it is the disaster-recovery copy. The on-disk backup (in the Node-RED data directory) and [Restore backup] only exist while Node-RED én this tab still work. If the tab or the whole update chain is ever broken, the file you downloaded to your own PC is the artifact you restore from: [Back up settings] before every risky change, and click the download link in the toast so the copy actually lands on your PC.
+
+When that moment comes, [restore-helper.json](restore-helper.json) is the no-SSH, no-dashboard path:
+
+1. Node-RED runs, the tab does not (or you want to restore without it): import `restore-helper.json` (menu > Import) and Deploy. It adds one small flow tab "WP Restore helper (delete after use)".
+2. From the PC that has the download, POST the file to the helper:
+
+   ```bash
+   curl -X POST -H "Content-Type: application/json" \
+     --data-binary "@wp-backup-2026-11-22-18-54-49.json" \
+     http://<node-red-host>:1880/wpupdate/restore-helper
+   ```
+
+   Default Node-RED settings accept POST bodies up to `apiMaxLength` on http-in nodes (default 5 MB; verified in the 5.0.10 `21-httpin.js` source), settings backups normally fit.
+3. The response states how many settings keys were restored and from which backup moment. Restore semantics are identical to the tab's own [Restore backup]: every key in the backup overwrites the current value, keys that exist now but not in the backup stay, `WPU_` state is never restored.
+4. Check the WP dashboard ([WP Home]) and the critical settings (trigger/revert values), and let the WP flow restart if needed.
+5. DELETE the helper flow again: it listens on the LAN without authentication (http nodes sit outside adminAuth). Import, use, delete.
+
+The helper uses `wprh`-prefixed ids on purpose and never touches `wpu` ids, so it cannot collide with the [WP Update] tab in any state.
 
 ## Merge rules of the core
 

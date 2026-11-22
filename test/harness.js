@@ -742,6 +742,39 @@ section('T24 v4.12.6: a single [Check for updates] click refreshes both version 
   ok(rSame && rSame[1] && rSame[1].payload === tabVer + ' -> ' + tabVer + ' (up to date)', 'tab side of the merged check shows (up to date) and changes nothing', rSame && rSame[1] && rSame[1].payload);
 }
 
+// ---------------- T25: restore-helper.json (disaster recovery from the LOCAL download) ----------------
+section('T25 restore-helper: manual restore of a local backup download (no SSH, no dashboard, no update tab required)');
+{
+  const rh = JSON.parse(fs.readFileSync(path.join(ROOT, 'restore-helper.json'), 'utf8'));
+  ok(Array.isArray(rh) && rh.length === 6, 'restore-helper.json imports one small flow (6 nodes)');
+  const ids = rh.map(x => x.id);
+  ok(ids.every(i => /^wprh/.test(i)) && new Set(ids).size === ids.length, 'all ids wprh-prefixed and unique (never wpu: the update tab self-update replaces every wpu* node)');
+  const rhTab = rh.find(x => x.type === 'tab');
+  ok(!!rhTab && rh.every(x => x.type === 'tab' || x.z === rhTab.id), 'single tab, all nodes placed on it');
+  const hin = rh.find(x => x.type === 'http in');
+  ok(hin && hin.method === 'post' && hin.url === '/wpupdate/restore-helper', 'http in POST /wpupdate/restore-helper');
+  const resp = rh.find(x => x.type === 'http response');
+  const cat = rh.find(x => x.type === 'catch');
+  ok(!!resp && !!cat && Array.isArray(cat.scope) && cat.scope.includes('wprh0001'), 'http response + scoped catch present');
+  const fn = rh.find(x => x.type === 'function' && /apply local backup download/.test(x.name || ''));
+  ok(!!fn && typeof fn.func === 'string', 'restore function present');
+  const gstores = { default: {} };
+  const globalStub = {
+    get: (k, s) => (gstores[s || 'default'] || {})[k],
+    set: (k, v, s) => { (gstores[s || 'default'] || {})[k] = v; },
+    keys: () => Object.keys(gstores.default)
+  };
+  const nodeLogs = [];
+  const run = (msg) => new Function('msg', 'node', 'global', 'Buffer', fn.func)(msg, { status() {}, log() {}, warn: m => nodeLogs.push(String(m)), error() {} }, globalStub, Buffer);
+  const sample = { meta: { generated: '2026-11-22T18:54:49.000Z', flowVersion: '26.5.1' }, globalContext: { F_CCC: { a: 1 }, WPU_BACKUP: 'own state, must skip', TOP1: [1, 2] } };
+  const out = run({ payload: JSON.parse(JSON.stringify(sample)) });
+  ok(out.statusCode === 200 && /Restored 2 settings keys/.test(out.payload), 'valid download restores every settings key (object body)', out && out.payload);
+  ok(!!gstores.default.F_CCC && Array.isArray(gstores.default.TOP1) && !gstores.default.WPU_BACKUP, 'keys applied to the global context, WPU_ state skipped', Object.keys(gstores.default));
+  ok(run({ payload: { nope: true } }).statusCode === 400, 'invalid body -> 400, nothing restored');
+  ok(run({ payload: JSON.stringify(sample) }).statusCode === 200, 'string body (raw) also parsed and applied');
+  ok(run({ payload: Buffer.from(JSON.stringify(sample)) }).statusCode === 200, 'Buffer body also parsed and applied');
+}
+
 console.log('TOTAL: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
 }
