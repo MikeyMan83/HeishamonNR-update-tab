@@ -1,5 +1,5 @@
 {
-  "version": "4.12.4",
+  "version": "4.12.5",
   "flowUrl": "https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json",
-  "notes": "Flow vs tab terminology ([Check flow version]/[Update flow] vs [Check tab version]/[Update tab]), cache-busting on all pinned raw fetches (stale CDN edges served hours-old content), boot refresh of the Tab version field, phase-aware deploy messages"
+  "notes": "Editor-canvas tidy only: Available field back on the 320-grid, password input no longer shares a cell with the POST /auth/token node. No runtime change."
 }

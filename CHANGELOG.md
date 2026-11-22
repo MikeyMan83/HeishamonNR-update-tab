@@ -1,4 +1,12 @@
-## v4.12.4 (current, 99 nodes)
+## v4.12.5 (current, 99 nodes)
+
+Editor-canvas tidy after reviewing the v4.12.3/v4.12.4 layout passes (no runtime change):
+
+- The v4.12.3 repack left two canvas nits: the **Available** field (`wpu0008`) at off-grid (206,320), and the **Password** input (`wpu0006`) sharing cell (700,720) with the `POST /auth/token` http node (`wpu0013`). Moved to (380,320) and (700,800) — both on the 320x80 grid, no collisions. Dashboard rendering is unaffected (it is driven by group/order/width, not canvas coordinates).
+- Harness T23 gains two structural asserts (zero same-cell collisions, zero off-grid placed nodes) -> **198/198**.
+- Tab node `version`, `version.json` and the boot inject payload (`Running: <version>`) bumped to 4.12.5 together, so a running 4.12.4 tab self-updates to this via [Update tab].
+
+## v4.12.4 (99 nodes)
 
 Drives two live findings after the first real self-update in production: (1) a raw.githubusercontent CDN edge served the v4.12.2 file hours after the v4.12.3 push, so the tab kept offering an update that was (or should have been) running already — "after update it still shows that i have to update"; (2) the two update concepts were still both just called "update".
 

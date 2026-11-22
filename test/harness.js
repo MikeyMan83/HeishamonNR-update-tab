@@ -698,6 +698,16 @@ section('T23 v4.12.4: CDN cache-busters on all pinned raw fetches, boot refresh 
   ok(byid['wpu0009'].label === 'Flow status', 'the package status field is labeled "Flow status" (flow vs tab vocabulary)');
   ok(byid['wpu00c0'].name === 'Line - This tab' && /<left>This tab<\/left>/.test(byid['wpu00c0'].format), 'sub-section divider is captioned "This tab"');
   ok(tab.length === 99, 'node count is 99 (one boot inject added)');
+  const placed = tab.filter(n => typeof n.x === 'number' && !['ui_tab', 'ui_group', 'tab', 'comment', 'link in', 'link out'].includes(n.type));
+  const cellSeen = new Map();
+  const coll = [];
+  for (const n of placed) {
+    const k = n.x + ',' + n.y;
+    if (cellSeen.has(k)) coll.push(k + ': ' + cellSeen.get(k) + ' vs ' + n.id); else cellSeen.set(k, n.id);
+  }
+  ok(coll.length === 0, 'no same-cell collisions on the editor canvas (v4.12.5: password input no longer shares a cell with the POST /auth/token node)', coll);
+  const offGrid = placed.filter(n => (n.x - 60) % 320 !== 0 || n.y % 80 !== 0).map(n => n.id + '@' + n.x + ',' + n.y);
+  ok(offGrid.length === 0, 'every placed node sits on the 320x80 editor grid (v4.12.5: Available field back on-grid)', offGrid);
 }
 
 console.log('TOTAL: ' + pass + ' passed, ' + fail + ' failed');
