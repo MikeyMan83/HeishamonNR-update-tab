@@ -1,5 +1,5 @@
 {
-  "version": "4.12.2",
+  "version": "4.12.3",
   "flowUrl": "https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json",
-  "notes": "Compact layout: all four sections are now half-width blocks (6 units, two per row on a desktop browser) instead of stretched full-width groups; every section packs into full 6-wide rows."
+  "notes": "Two-column layout (Update / Backup & admin, width-6 groups with Ed-style divider templates), consistent tab terminology, full-width button rows (no truncation)"
 }
