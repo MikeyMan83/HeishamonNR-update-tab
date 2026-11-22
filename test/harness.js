@@ -97,7 +97,7 @@ section('T1 wpu0015 verwerk GET /flows (real 26.5.1)');
   const local = makeLocal();
   const out = c.run('wpu0015', { statusCode: 200, payload: { flows: local, rev: 'rev123' }, _phase: 'check', _base: 'http://127.0.0.1:1880', topic: 'check' });
   ok(tab.find(n => n.id === 'wpu0015').outputs === 5 && Array.isArray(out) && out.length >= 1, 'wpu0015 configured 5 outputs (check/apply/err/flowdl/selfupdate)');
-  ok(out[0] && out[0].url === 'https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/version.json', 'check -> version.json', out[0] && out[0].url);
+  ok(out[0] && out[0].url.startsWith('https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/version.json') && /\?cb=\d+$/.test(out[0].url), 'check -> version.json (with cache-buster)', out[0] && out[0].url);
   ok(c.stores.default.WPU.currentVersion === '26.5.1', 'currentVersion 26.5.1', c.stores.default.WPU.currentVersion);
   ok(c.stores.default.WPU.rev === 'rev123' && c.stores.default.WPU.apiV2 === true, 'rev + apiV2 stored');
   ok(Array.isArray(c.stores.memory.WPU_localFlows) && c.stores.memory.WPU_localFlows.length === local.length, 'localFlows in MEMORY store');
@@ -105,7 +105,7 @@ section('T1 wpu0015 verwerk GET /flows (real 26.5.1)');
   // apply phase with fresh latest
   c.stores.default.WPU.latest = { version: '26.5.1', flowUrl: 'https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/flows%20(26.5.1%20stable).json', checkedAt: Date.now() };
   const outA = c.run('wpu0015', { statusCode: 200, payload: { flows: local, rev: 'rev123' }, _phase: 'apply', _base: 'http://127.0.0.1:1880' });
-  ok(outA[1] && outA[1].url === c.stores.default.WPU.latest.flowUrl && outA[1].method === 'GET', 'apply -> download flowUrl untouched', outA[1] && outA[1].url);
+  ok(outA[1] && outA[1].url.startsWith(c.stores.default.WPU.latest.flowUrl) && /\?[&a-z]*cb=\d+$/.test(outA[1].url) && outA[1].method === 'GET', 'apply -> download flowUrl + cache-buster', outA[1] && outA[1].url);
   // stale check refused
   c.stores.default.WPU.latest.checkedAt = Date.now() - 2 * 3600 * 1000;
   const outS = c.run('wpu0015', { statusCode: 200, payload: { flows: local, rev: 'r' }, _phase: 'apply', _base: 'http://127.0.0.1:1880' });
@@ -485,7 +485,7 @@ section('T18 v4.11 self-update: phase, pinned version.json, validation, wpu-only
   const local = makeLocal(); // real 26.5.1 + broker mod + personal tab + the tab itself
   local.find(n => n.id === 'wpu-tab-0001').version = '4.10.4';
   const o2 = c.run('wpu0015', { statusCode: 200, payload: { flows: local, rev: 'rev77' }, _phase: 'selfupdate', _base: 'http://127.0.0.1:1880' });
-  ok(o2.length === 5 && o2[4] && o2[4].url === 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/version.json' && o2[0] === null, 'selfupdate -> out5 pinned updater version.json', o2[4] && o2[4].url);
+  ok(o2.length === 5 && o2[4] && o2[4].url.startsWith('https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/version.json') && /\?cb=\d+$/.test(o2[4].url) && o2[0] === null, 'selfupdate -> out5 pinned version.json (cache-busted)', o2[4] && o2[4].url);
   ok(o2[4]._phase === 'selfupdate', 'out5 keeps _phase selfupdate', o2[4]._phase);
   const o2b = c.run('wpu0015', { statusCode: 200, payload: { flows: local, rev: 'rev77' }, _phase: 'selfcheck', _base: 'http://127.0.0.1:1880' });
   ok(o2b[4] && o2b[4]._phase === 'selfcheck' && o2b[4].url.includes('HeishamonNR-update-tab/main/version.json'), 'selfcheck -> out5 with _phase selfcheck (NOT rewritten to selfupdate)', o2b[4] && o2b[4]._phase);
@@ -495,7 +495,7 @@ section('T18 v4.11 self-update: phase, pinned version.json, validation, wpu-only
   // v4.12: check-then-apply parity — only _phase 'selfupdate' downloads; 'selfcheck' only displays "cur -> version"
   let c3 = mk93();
   let r = c3.run('wpu0093', { statusCode: 200, _phase: 'selfupdate', payload: { version: '4.11.0', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
-  ok(r[0] && r[0].url.endsWith('/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json') && r[0].method === 'GET' && r[0]._phase === 'selfupdate', 'selfupdate + newer -> download msg', r[0] && r[0].url);
+  ok(r[0] && r[0].url.startsWith('https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json') && /\?cb=\d+$/.test(r[0].url) && r[0].method === 'GET' && r[0]._phase === 'selfupdate', 'selfupdate + newer -> download msg (cache-busted)', r[0] && r[0].url);
   ok(c3.stores.default.WPU.selfLatest.version === '4.11.0', 'selfLatest stored');
   c3 = mk93();
   r = c3.run('wpu0093', { statusCode: 200, _phase: 'selfcheck', payload: { version: '4.11.0', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
@@ -593,7 +593,7 @@ section('T21 v4.12: dashboard sections, updater check-then-apply UX, response-no
   ok(widgets.every(w => widgetGroups.has(w.group)), 'every dashboard widget is assigned to a section group', widgets.filter(w => !widgetGroups.has(w.group)).map(w => w.id));
   ok(byid['wpu00a0'] && byid['wpu00a0'].type === 'ui_button' && byid['wpu00a0'].topic === 'selfcheck' && JSON.stringify(byid['wpu00a0'].wires) === '[["wpu0010"]]' && byid['wpu00a0'].group === 'wpu-ui-grp', 'Check tab version button (topic selfcheck) in Update column wired to wpu0010');
   ok(byid['wpu00a1'] && byid['wpu00a1'].type === 'ui_text' && byid['wpu00a1'].group === 'wpu-ui-grp' && byid['wpu00a1'].format === '{{msg.payload}}', 'Tab version display ui_text in Update column');
-  ok(byid['wpu0090'] && byid['wpu0090'].topic === 'selfupdate' && byid['wpu0090'].group === 'wpu-ui-grp', 'Update this tab button (topic selfupdate) in Update column');
+  ok(byid['wpu0090'] && byid['wpu0090'].topic === 'selfupdate' && byid['wpu0090'].group === 'wpu-ui-grp', 'Update tab button (topic selfupdate) in Update column');
   ok(byid['wpu0093'] && byid['wpu0093'].outputs === 3 && JSON.stringify(byid['wpu0093'].wires) === '[["wpu0094"],["wpu00a1"],["wpu074"]]', 'wpu0093 wires: out1 download, out2 version display, out3 error hub');
   ok(byid['wpu0015'] && byid['wpu0015'].outputs === 5 && JSON.stringify(byid['wpu0015'].wires[4]) === '["wpu0092"]', 'wpu0015 out5 -> wpu0092 (pinned updater version.json)');
   for (const nid of ['wpu0029', 'wpu0085']) {
@@ -647,7 +647,7 @@ section('T22 v4.12.3: two fixed columns (2 groups of 6 units), full-width rows, 
   ok(div('wpu00c1') && byid['wpu00c1'].group === 'wpu-ui-grp3' && byid['wpu00c1'].order === 6, 'Admin divider (Ed-style hr template) in the Backup & admin column');
   const colCount = g => widgets.filter(w => w.group === g).length;
   ok(colCount(groups[0].id) === 9 && colCount(groups[1].id) === 8, 'Update column holds 9 widgets (8 rows + Tab updater divider), Backup & admin holds 8 (7 rows + Admin divider)', [colCount(groups[0].id), colCount(groups[1].id)]);
-  const expected = { wpu0001: 'Check for updates', wpu00a0: 'Check tab version', wpu0090: 'Update this tab', wpu0002: 'Back up settings', wpu0048: 'Restore backup', wpu0049: 'Confirm restore', wpu0080: 'Download flows' };
+  const expected = { wpu0001: 'Check flow version', wpu00a0: 'Check tab version', wpu0090: 'Update tab', wpu0002: 'Back up settings', wpu0048: 'Restore backup', wpu0049: 'Confirm restore', wpu0080: 'Download flows' };
   const mism = Object.entries(expected).filter(([id, nm]) => byid[id].name !== nm || byid[id].label !== nm).map(([id]) => id + '=' + byid[id].name);
   ok(mism.length === 0, 'button wording is the agreed consistent set', mism);
   const badTerm = widgets.filter(w => w.type !== 'ui_template' && ((typeof w.label === 'string' && /updater/i.test(w.label)) || (typeof w.name === 'string' && /updater/i.test(w.name)))).map(w => w.id + ':' + (w.label || w.name));
@@ -669,6 +669,35 @@ section('T22 v4.12.3: two fixed columns (2 groups of 6 units), full-width rows, 
   }
   ok(nlComments.length === 0, 'no Dutch left in code comments', nlComments);
   ok(nlCode.length === 0, 'no Dutch left in code lines (literals/identifiers)', nlCode);
+}
+
+// ---------------- T23: v4.12.4 cache-busters, boot refresh, phase-aware deploy texts ----------------
+section('T23 v4.12.4: CDN cache-busters on all pinned raw fetches, boot refresh of the Tab version field, phase-aware deploy texts, no stale vocabulary');
+{
+  const byid = Object.fromEntries(tab.map(n => [n.id, n]));
+  const vjson = JSON.parse(fs.readFileSync(path.join(ROOT, 'version.json'), 'utf8'));
+  const tabNode = tab.find(n => n.type === 'tab');
+  const f15 = byid['wpu0015'].func, f93 = byid['wpu0093'].func, f31 = byid['wpu0031'].func;
+  ok(String(f15).split('cb=" + Date.now()').length - 1 === 3, 'all three pinned raw fetches in wpu0015 carry a cache-buster (own version.json, package flowUrl, package version.json)', String(f15).split('cb=" + Date.now()').length - 1);
+  ok(/st\.latest\.flowUrl \+ \(String\(st\.latest\.flowUrl\)\.indexOf\("\?"\) >= 0 \? "&" : "\?"\) \+ "cb=" \+ Date\.now\(\)/.test(f15), 'package flowUrl buster preserves an existing query string');
+  ok(/fq \+ \(fq\.indexOf\("\?"\) >= 0 \? "&" : "\?"\) \+ "cb=" \+ Date\.now\(\)/.test(f93), 'wpu0093 self-update download URL carries a cache-buster (a stale CDN edge served 4.12.2 hours after the 4.12.3 push)');
+  ok(!/\?cb=/.test(byid['wpu0095'].func), 'wpu0095 validates the flowUrl exactly as stored in version.json (the buster is added only at fetch time)');
+  const inj = byid['wpu00c2'];
+  ok(inj && inj.type === 'inject' && inj.once === true && JSON.stringify(inj.wires) === '[["wpu00a1"]]', 'boot inject (once) -> wpu00a1: the Tab version field refreshes on every restart, so no stale "(update!)" text survives a deploy', inj && inj.wires);
+  ok(!!inj && inj.payload === 'Running: ' + tabNode.version && tabNode.version === vjson.version, 'boot text "Running: <version>" stays in sync with the tab node and version.json', { inj: inj && inj.payload, tab: tabNode.version, json: vjson.version });
+  ok(/isSelf = \(msg\._phase === "selfupdate"\)/.test(f31) && /Tab update succeeded/.test(f31) && /Flow update succeeded/.test(f31), 'wpu0031 labels the deploy "Tab update succeeded" vs "Flow update succeeded" by phase');
+  ok(/_phase: "selfupdate",/.test(byid['wpu0096'].func), 'wpu0096 tags its POST with _phase "selfupdate" so the report can tell tab from flow');
+  const stale = [];
+  const rx = /Update this tab|Update the updater|RUN UPDATE|Run update|Update now|Check for update|Backup settings|\[Download flow\]|the Updater field/;
+  for (const n of tab) for (const f of ['name', 'label', 'tooltip', 'info']) if (typeof n[f] === 'string' && rx.test(n[f])) stale.push(n.id + '.' + f);
+  for (const n of tab) {
+    if (typeof n.func !== 'string') continue;
+    n.func.split('\n').forEach(L => { if (rx.test(L)) stale.push(n.id + '.func: ' + L.trim().slice(0, 80)); });
+  }
+  ok(stale.length === 0, 'no stale button names anywhere user-visible (vocabulary is now Check flow version / Update flow / Check tab version / Update tab)', stale);
+  ok(byid['wpu0009'].label === 'Flow status', 'the package status field is labeled "Flow status" (flow vs tab vocabulary)');
+  ok(byid['wpu00c0'].name === 'Line - This tab' && /<left>This tab<\/left>/.test(byid['wpu00c0'].format), 'sub-section divider is captioned "This tab"');
+  ok(tab.length === 99, 'node count is 99 (one boot inject added)');
 }
 
 console.log('TOTAL: ' + pass + ' passed, ' + fail + ' failed');
