@@ -1,8 +1,18 @@
+## v4.12.3 (current, 98 nodes)
+
+Layout and wording, driven by a live screenshot of the tab in the dashboard: on a wide screen node-red-dashboard had placed all four width-6 sections next to each other in a single row, and the width-3 button labels rendered truncated ("CHECK UPDATER VER", "UPDATE THE UPDATE").
+
+- **Two fixed columns instead of fluid sections**: exactly two `ui_group`s ("Update", width 6, order 1; "Backup & admin", width 6, order 2). With only two groups, node-red-dashboard always renders this tab as two columns side by side (each about half the screen) and stacks them into one column on narrow screens. The old Updater and Admin sections survive as sub-sections behind an Ed-style `ui_template` divider (the same `<hr>` idiom the HeishaMoNR dashboard itself uses), captioned "Tab updater" and "Admin".
+- **Widgets repacked for the 6-unit columns**: every button now fills a full 6-unit row, so labels never truncate again; Installed + Available share one 3+3 row; all fields stay full width.
+- **Consistent wording** (user-visible labels and messages): the tab is now consistently "the tab" — [Update the updater] -> [Update this tab], [Check updater version] -> [Check tab version], the "Updater" field -> "Tab version", the status text "Updater: ..." -> "Tab: ...", "the updater version.json" -> "version.json"; [Check for update] -> [Check for updates], RUN UPDATE -> Run update (and it drops its custom red styling: one button silently carrying its own color scheme read as an inconsistency, all buttons now use the theme default), [Backup settings] -> [Back up settings], [Download flow] -> [Download flows] (anchor text too), Admin inputs -> "User (optional)" / "Password (optional)" under the Admin divider.
+- Harness: T22 rewritten (two groups, no ragged rows, full-width buttons, a fits-its-width label assert, divider asserts, the agreed button wording set, exactly three "(optional)" inputs), T21 updated for the two groups -> **184/184**.
+- Nodes: still 98 (two `ui_group`s removed, two `ui_template` dividers added).
+
 # Changelog
 
 All dates are 21 Nov 2026: this tab was built, reviewed and hardened in one day. Key facts per version: the button behaviour and merge rules are stable since v4.6; earlier versions are mostly of historical interest. (v4.12.x follow-ups: 22 Nov 2026.)
 
-## v4.12.2 (current, 98 nodes)
+## v4.12.2 (98 nodes)
 
 Compact layout, per user feedback ("not happy with the horizontal alignment, whole tab too stretched"):
 
