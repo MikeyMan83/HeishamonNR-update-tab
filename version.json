@@ -1,5 +1,5 @@
 {
-  "version": "4.12.1",
+  "version": "4.12.2",
   "flowUrl": "https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json",
-  "notes": "Consistent dashboard grid (every section packs into full 12-wide rows; Status full width), all remaining Dutch code comments and the internal merge-stats keys translated to English, and the v4.12.0 download-fix claim corrected in the docs (the response nodes already carried headers: {}; msg.headers was always sent per the Node-RED 5.0.1 runtime source)."
+  "notes": "Compact layout: all four sections are now half-width blocks (6 units, two per row on a desktop browser) instead of stretched full-width groups; every section packs into full 6-wide rows."
 }
