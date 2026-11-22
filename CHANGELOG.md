@@ -1,4 +1,12 @@
-## v4.12.6 (current, 98 nodes)
+## v4.12.7 (current, 98 nodes)
+
+Download discoverability (user feedback: click Back up settings / Download flows and "the browser does nothing"; the only download path was a private toast that disappeared after 10 seconds):
+
+- **The download toast stays open 60 seconds** (was: 10). Verified against the node-red-dashboard 3.6.3 source (ui_toast.js): "var dt = node.displayTime || msg.timeout * 1000 || 3000; if (dt <= 0) { dt = 1; }". DB1 has no sticky toast (displayTime 0 falls back to the 3 s default, negative clamps to 1 ms), but an EMPTY node displayTime lets the per-message msg.timeout win. Both producers (wpu0026 backup, wpu0081 flows) now send timeout: 60 and the wpu0076 node displayTime is empty.
+- **Clearer toast text**: a bold Download-the-backup / Download-the-flows link on its own line with "click here, this toast stays open 60 seconds", so the intended action is unmissable. The disk copy (wp-backup-latest.json) is still mentioned: that is the file [Restore backup] reads after a Node-RED restart; the browser download is the copy for off-device archiving.
+- Harness: +3 asserts (msg.timeout 60 on both producers, empty node displayTime with the DB1 clamp rationale) and the T24 tab-side asserts made version-agnostic (they hardcoded the running version) -> **211/211**. Node count unchanged (98); no wiring change, only the two function payloads and the one toast-node field.
+
+## v4.12.6 (98 nodes)
 
 One check instead of two (user request: "Do we need two check version buttons?" with the follow-up to merge them cleanly):
 

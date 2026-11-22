@@ -340,8 +340,10 @@ section('T12 wpu0020 backup dump (WPU_ excluded, token in memory)');
   ok(out2.payload.includes('/wpupdate/backup?token=' + c.stores.memory.WPU_dlToken), 'relative token link present');
   ok(out2.payload.includes('<a href="/wpupdate/backup?token=' + c.stores.memory.WPU_dlToken + '"'), 'v4.9.1: clickable anchor in toast (DB1 escapes non-raw text)');
   ok(out2.payload.includes('Download the backup</a>'), 'v4.9.1: anchor label present');
+  ok(out2.timeout === 60, 'v4.12.7: backup download toast stays open 60 seconds via msg.timeout');
   const t76 = tab.find(n => n.id === 'wpu0076');
   ok(t76 && t76.raw === true, 'v4.9.1: private toast is raw:true so the anchor renders');
+  ok(t76.displayTime === '', 'v4.12.7: private toast node displayTime is EMPTY so msg.timeout wins (DB1 ui_toast.js: dt = node.displayTime || msg.timeout*1000 || 3000; 0 or negative clamps, so DB1 has no sticky toast)', t76.displayTime);
   ok(!/evil|localhost|127\.0\.0\.1|:\d{4}\//.test(out2.payload.match(/Download[^\s]*/)[0]), 'no absolute host in link', out2.payload.match(/Download[^\s]*/)[0]);
   // wpu0028 endpoint
   let r = c.run('wpu0028', { req: { query: { token: 'wrong' } } });
@@ -426,6 +428,7 @@ section('T16 v4.10 flow-download: phase, dump+token, private link, endpoint');
   ok(o3[0].socketid === 'sock99' && !!o3[0]._client, 'socketid + _client forwarded (DB1 private toast)');
   ok(o3[0].payload.includes('/wpupdate/flows?token=' + c.stores.memory.WPU_flowDlToken), 'relative token link in private message');
   ok(o3[0].payload.includes('<a href="/wpupdate/flows?token=' + c.stores.memory.WPU_flowDlToken + '"'), 'v4.10.1: flows toast has a clickable anchor (DB1 escapes non-raw text)');
+  ok(o3[0].timeout === 60, 'v4.12.7: flows download toast stays open 60 seconds via msg.timeout');
   // wpu0081 without cached flows -> error hub
   const c2 = makeCtx();
   const o3b = c2.run('wpu0081', {});
@@ -731,11 +734,12 @@ section('T24 v4.12.6: a single [Check for updates] click refreshes both version 
   ok(out2 && out2[1] && out2[1].url.startsWith('https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/flows') && /\?cb=/.test(out2[1].url) && !out2[4], 'apply (Update flow) downloads the flow and does NOT also trigger the tab check');
   const c2 = makeCtx();
   c2.flow.set('WPU_localFlows', tab, 'memory');
-  const rNew = c2.run('wpu0093', { statusCode: 200, payload: { version: '4.12.7', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json', notes: 'x' }, _phase: 'selfcheck' });
-  ok(rNew && rNew[1] && rNew[1].payload === '4.12.6 -> 4.12.7 (update!)', 'tab side of the merged check shows current -> available (update!)', rNew && rNew[1] && rNew[1].payload);
+  const tabVer = tab.find(n => n.type === 'tab').version;
+  const rNew = c2.run('wpu0093', { statusCode: 200, payload: { version: '9.9.9', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json', notes: 'x' }, _phase: 'selfcheck' });
+  ok(rNew && rNew[1] && rNew[1].payload === tabVer + ' -> 9.9.9 (update!)', 'tab side of the merged check shows current -> available (update!)', rNew && rNew[1] && rNew[1].payload);
   ok(rNew && rNew[0] === null, 'selfcheck never downloads ([Update tab] stays the only apply)');
-  const rSame = c2.run('wpu0093', { statusCode: 200, payload: { version: '4.12.6', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' }, _phase: 'selfcheck' });
-  ok(rSame && rSame[1] && rSame[1].payload === '4.12.6 -> 4.12.6 (up to date)', 'tab side of the merged check shows (up to date) and changes nothing', rSame && rSame[1] && rSame[1].payload);
+  const rSame = c2.run('wpu0093', { statusCode: 200, payload: { version: tabVer, flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' }, _phase: 'selfcheck' });
+  ok(rSame && rSame[1] && rSame[1].payload === tabVer + ' -> ' + tabVer + ' (up to date)', 'tab side of the merged check shows (up to date) and changes nothing', rSame && rSame[1] && rSame[1].payload);
 }
 
 console.log('TOTAL: ' + pass + ' passed, ' + fail + ' failed');

@@ -1,5 +1,5 @@
 {
-  "version": "4.12.6",
+  "version": "4.12.7",
   "flowUrl": "https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json",
-  "notes": "Single [Check for updates] button: one click now refreshes both the flow check (Installed vs Available) and the tab check (Tab version field); [Check tab version] removed, [Update tab] is itself check-then-apply. No other runtime change."
+  "notes": "Download UX: the private download toast (backup + flows) now stays open 60 seconds instead of 10 (DB1 has no sticky toast), with a clearer click-here-to-download line. No other runtime change."
 }
