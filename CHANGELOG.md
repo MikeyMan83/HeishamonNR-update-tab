@@ -2,7 +2,17 @@
 
 All dates are 21 Nov 2026: this tab was built, reviewed and hardened in one day. Key facts per version: the button behaviour and merge rules are stable since v4.6; earlier versions are mostly of historical interest. (v4.12.x follow-ups: 22 Nov 2026.)
 
-## v4.12.1 (current, 98 nodes)
+## v4.12.2 (current, 98 nodes)
+
+Compact layout, per user feedback ("not happy with the horizontal alignment, whole tab too stretched"):
+
+- **Compact half-width sections**: all four `ui_group`s drop from width 12 (full-width, everything stretched across the screen) to **6 units**, the DB1 default block size. Two sections sit side by side per browser row once the window is wide enough (Update + Updater on the first row, Backup & export + Admin below), wrapping to one column on narrow screens. Verified against the node-red-dashboard grid documentation: groups of width 6 sit alongside each other on a wide browser, one unit is 48 px + 6 px gap.
+- **Widgets repacked for the 6-wide groups**: Update = Check(3) + RUN(3), Installed(3) + Available(3), Status(6); Updater = Check(3) + Update(3), Updater field(6); Backup & export = Backup(3) + Restore(3), Confirm(3) + Download(3), Backup folder(6); Admin = user(6) and password(6), each a full row. Every section packs into full 6-wide rows, no ragged wrapping.
+- **"by agreement" retracted**: the v4.12.0 entry said the Dutch code comments stayed "by agreement". There was no such agreement; the sentence below is corrected. The Dutch comments were fully removed in v4.12.1 anyway.
+- Harness: T22 updated for the 6-wide groups, plus a new assert that all four sections are half-width (6) -> **178/178**.
+- Tab node `version` and `version.json` bumped to 4.12.2, so a running 4.12.0/4.12.1 tab offers this update via [Update the updater] itself.
+
+## v4.12.1 (98 nodes)
 
 Layout consistency, English throughout, and an honest correction:
 
@@ -19,7 +29,7 @@ Layout, UX parity and the download fix:
 - **Sectional dashboard**: four `ui_group` sections in order 1-4 — **Update** (Check for update / RUN UPDATE + Installed/Available/Status), **Updater** (new [Check updater version] button `wpu00a0` topic `selfcheck`, [Update the updater] `wpu0090`, new **Updater** version field `wpu00a1`), **Backup & export** (Backup settings / Restore / Download flow / Backup folder), **Admin** (user/password). Buttons in one column, inputs/readouts in the next; 10 section comment nodes on the right rail. No same-cell collisions, all nodes on the 320x80 grid, no dangling wires.
 - **Updater check-then-apply UX parity** (same as the package update: check shows versions, the update button applies): [Check updater version] only fetches the pinned updater `version.json` and displays `current -> available (update!)/(up to date)` in the Updater field (`wpu0093` out2 -> `wpu00a1`) — it never downloads. Only [Update the updater] (topic `selfupdate`) downloads and applies when newer (`wpu0093` out1 -> `wpu0094`). Bug fixed in `wpu0015`: the out5 phase was hardcoded to `selfupdate`, so a mere version check would also have triggered the download; it now preserves the incoming phase (`selfcheck` stays `selfcheck`).
 - **Download fix** ("download flow doesn't download onto the browser device"): the two `http response` nodes (`wpu0029` for `/wpupdate/backup`, `wpu0085` for `/wpupdate/flows`) had `headers: []` (array) in the exported config. On Node-RED 5.x that makes the node ignore the `msg.headers` set by the serve functions, so `Content-Type`/`Content-Disposition: attachment` were never sent and the browser rendered the JSON in the tab instead of saving it. Both nodes now carry `headers: {}` (empty object) — verified live on Node-RED 5.0.10: function-set headers are sent. Clicking the private toast link now downloads the file.
-- **Remaining Dutch translated to English** (Ed's package UI is English): node names (`wpu0017` "GET repo page (fallback)", `wpu0018` "GET new flow.json", `wpu0064`/`wpu070` "error: download"/"error: snapshot", `wpu0076` "Message (this client)") and user-visible function literals (`"onbekend"` -> `"unknown"` incl. the phantom-update guard in `wpu0019`, "while version", "Internal error: duplicate node id after merge", "Possibly renamed; check manually", "(via repo scan)"). Code comments stay Dutch (developer-facing, by agreement).
+- **Remaining Dutch translated to English** (Ed's package UI is English): node names (`wpu0017` "GET repo page (fallback)", `wpu0018` "GET new flow.json", `wpu0064`/`wpu070` "error: download"/"error: snapshot", `wpu0076` "Message (this client)") and user-visible function literals (`"onbekend"` -> `"unknown"` incl. the phantom-update guard in `wpu0019`, "while version", "Internal error: duplicate node id after merge", "Possibly renamed; check manually", "(via repo scan)"). Code comments stayed Dutch at this point (they were fully removed in v4.12.1; there was no agreement to keep them).
 - Harness: T18 updated for the phase-gated download (`_phase: 'selfupdate'` required for the download assert; `selfcheck` displays only; `up to date` display text) + new section **T21** (4 groups with names/orders, every widget assigned to a group, `wpu00a0`/`wpu00a1`/`wpu0090` wiring, `wpu0093`/`wpu0015` wire shapes, response-node `headers` deep-equal `{}`, Content-Disposition in the serve functions, tab version === version.json, no Dutch in user-visible fields) -> **167/167**.
 - Tab node `version` and `version.json` bumped to 4.12.0, so a running 4.11.2 tab offers this update via [Update the updater] itself.
 
