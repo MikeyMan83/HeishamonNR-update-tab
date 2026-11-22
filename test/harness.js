@@ -615,15 +615,16 @@ section('T21 v4.12: dashboard sections, updater check-then-apply UX, response-no
   ok(leaks.length === 0, 'no Dutch left in user-visible node fields (name/label/tooltip/ok/cancel)', leaks);
 }
 
-// ---------------- T22: v4.12.1 consistent grid, English comments/stats ----------------
-section('T22 v4.12.1: full-width dashboard rows, English code comments, English stats keys');
+// ---------------- T22: v4.12.2 compact half-width sections, English comments/stats ----------------
+section('T22 v4.12.2: compact half-width sections (6 units), full 6-wide rows, English comments/stats');
 {
   const byid = Object.fromEntries(tab.map(n => [n.id, n]));
   const groups = tab.filter(n => n.type === 'ui_group');
   const widgets = tab.filter(n => String(n.type).startsWith('ui_') && n.type !== 'ui_tab' && n.type !== 'ui_group' && n.type !== 'ui_toast');
+  ok(groups.length === 4 && groups.every(g => Number(g.width) === 6), 'all four sections are compact half-width blocks (6 units: two sections per row on a desktop browser, DB1 default grid)', groups.map(g => g.width));
   const ragged = [];
   for (const g of groups) {
-    const gw = Number(g.width) || 12; // ui_group exports width as a string ("12")
+    const gw = Number(g.width) || 12; // ui_group exports width as a string ("6")
     const items = widgets.filter(w => w.group === g.id).sort((a, b) => a.order - b.order);
     let used = 0, full = true;
     for (const it of items) {
@@ -634,10 +635,11 @@ section('T22 v4.12.1: full-width dashboard rows, English code comments, English 
     if (used !== 0) full = false;
     if (!full) ragged.push(g.name);
   }
-  ok(ragged.length === 0, 'every section packs into full 12-wide rows (no ragged wrapping)', ragged);
-  ok(byid['wpu0007'].width === 2 && byid['wpu0008'].width === 2 && byid['wpu0009'].width === 12, 'Update section: Check(4)+RUN(4)+Installed(2)+Available(2) on one row, Status full width (12)');
-  ok(byid['wpu0005'].width === 6 && byid['wpu0006'].width === 6, 'Admin section: user(6)+password(6) fill the row');
-  ok(byid['wpu0058'].width === 8 && byid['wpu0080'].width === 4, 'Backup & export row 2: Download flow(4)+Backup folder(8) fill the row');
+  ok(ragged.length === 0, 'every section packs into full 6-wide rows (no ragged wrapping)', ragged);
+  ok(byid['wpu0001'].width === 3 && byid['wpu0003'].width === 3 && byid['wpu0007'].width === 3 && byid['wpu0008'].width === 3 && byid['wpu0009'].width === 6, 'Update section (6): Check(3)+RUN(3), Installed(3)+Available(3), Status full width (6)');
+  ok(byid['wpu00a0'].width === 3 && byid['wpu0090'].width === 3 && byid['wpu00a1'].width === 6, 'Updater section (6): two buttons on one row, Updater field full width');
+  ok(byid['wpu0049'].width === 3 && byid['wpu0080'].width === 3 && byid['wpu0058'].width === 6, 'Backup & export (6): Backup(3)+Restore(3), Confirm(3)+Download(3), Backup folder(6) full row');
+  ok(byid['wpu0005'].width === 6 && byid['wpu0006'].width === 6, 'Admin section (6): user and password each a full row');
   const f30 = byid['wpu0030'].func, f96 = byid['wpu0096'].func, f31 = byid['wpu0031'].func;
   ok(/added: stNew\.length/.test(f30) && /unchanged: stSame/.test(f30) && !/\bnieuw:/.test(f30), 'wpu0030 _mergeStats uses English keys (added/updated/removed/unchanged)');
   ok(/added: stNew\.length/.test(f96) && !/\bnieuw:/.test(f96), 'wpu0096 self-merge stats use English keys');
