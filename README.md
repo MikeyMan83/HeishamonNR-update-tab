@@ -2,7 +2,7 @@
 
 An importable Node-RED tab for [HeishaMoNR](https://github.com/edterbak/HeishaMoNR) that reduces every package update to a few dashboard clicks: **Check for update**, **Backup settings**, **Restore**, **Update now**, plus **Download flow** for a full flow export. No scripts, no SSH: the tab talks to Node-RED's own Admin API from inside the flow, and follows the in-flow Admin API precedent that the flow already sets (the GUI_01/GUI_02 tab-toggle uses `PUT /flow/:id`).
 
-- Flow file: [`update-tab.json`](update-tab.json), v4.10.3, 76 nodes (one flow tab with its own `ui_tab`/`ui_group`; all node ids prefixed `wpu`, so an import never collides with package ids).
+- Flow file: [`update-tab.json`](update-tab.json), v4.10.4, 76 nodes (one flow tab with its own `ui_tab`/`ui_group`; all node ids prefixed `wpu`, so an import never collides with package ids).
 - Verified against the real 26.3.1 and 26.5.1 packages: 127/127 automated checks green on v4.7; v4.8 (security fixes, see [CHANGELOG.md](CHANGELOG.md)) re-validated structurally; v4.8.1 re-ran the harness after a source-verified review: 91/91; v4.9 (merge reporting) 99/99; v4.10 (flow download) 117/117; v4.10.1 (clickable toast links) 121/121; v4.10.2 (link hygiene, source-verified) 122/122 (see the test report).
 - Live smoke-tested in Node-RED 5.0.1 with node-red-dashboard DB1 (what the HeishaMoNR package runs on): imports without a single editor warning.
 

@@ -2,7 +2,11 @@
 
 All dates are 21 Nov 2026: this tab was built, reviewed and hardened in one day. Key facts per version: the button behaviour and merge rules are stable since v4.6; earlier versions are mostly of historical interest.
 
-## v4.10.3 (current, 76 nodes)
+## v4.10.4 (current, 76 nodes)
+
+UI language unified to **English**, consistent with the edterbak package (its dashboard is English: "Home", "Inlet actual", "SET/RESET", "Version X.Y.Z Stable"): all dashboard labels, tooltips, editor node names, toast/status messages, endpoint error JSONs and Node-RED log lines translated (75 node fields + 88 string literals). Node ids, topics-as-keys and code comments unchanged. Harness assertions updated to the English strings: **122/122** green.
+
+## v4.10.3 (76 nodes)
 
 Layout fix: the private toast `wpu0076` (added in v4.10) was placed on the same grid cell as the error function `wpu0040` (4540,160) — moved to (4540,80). No other same-cell collisions; all 76 nodes on the 320x80 grid, link pairs symmetric, no dangling wires. Harness still 122/122.
 

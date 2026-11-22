@@ -108,7 +108,7 @@ section('T1 wpu0015 verwerk GET /flows (real 26.5.1)');
   // stale check refused
   c.stores.default.WPU.latest.checkedAt = Date.now() - 2 * 3600 * 1000;
   const outS = c.run('wpu0015', { statusCode: 200, payload: { flows: local, rev: 'r' }, _phase: 'apply', _base: 'http://127.0.0.1:1880' });
-  ok(outS[2] && /ouder dan een uur/.test(outS[2].payload), 'stale check refused');
+  ok(outS[2] && /older than one hour/.test(outS[2].payload), 'stale check refused');
   // 401 clears memory token only
   c.stores.memory.WPU_token = 'old'; c.stores.memory.WPU_tokenTime = Date.now();
   c.stores.default.WPU.token = 'persisted-should-not-exist';
@@ -168,7 +168,7 @@ section('T4 wpu0014 token Verarbeitung: memory store only');
   ok(out[0].url === 'http://127.0.0.1:1880/flows' && out[0].headers.Authorization === 'Bearer tokABC', 'follow-up GET /flows with Bearer');
   const c2 = makeCtx();
   const out2 = c2.run('wpu0014', { statusCode: 401, payload: {}, _phase: 'check', _base: 'http://127.0.0.1:1880' });
-  ok(out2[1] && /mislukt/.test(out2[1].payload), 'failed login -> clear error');
+  ok(out2[1] && /login failed/.test(out2[1].payload), 'failed login -> clear error');
 }
 
 // ---------------- T8: version compare ----------------
@@ -181,19 +181,19 @@ section('T5 wpu0019 version compare + allowlist + unknown-cur');
   ok(c.stores.default.WPU.latest.version === '26.6.0' && c.stores.default.WPU.latest.flowUrl.includes('%20'), 'latest stored, url normalized', c.stores.default.WPU.latest.flowUrl);
   c = mk();
   out = c.run('wpu0019', { statusCode: 200, payload: { version: '26.5.1', flowUrl: 'https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/flows%20(26.5.1%20stable).json' }, _cur: '26.5.1' });
-  ok(/al de nieuwste/.test(out[2].payload), 'same version -> no update');
+  ok(/latest version/.test(out[2].payload), 'same version -> no update');
   c = mk();
   out = c.run('wpu0019', { statusCode: 200, payload: { version: '26.6.0', flowUrl: 'https://evil.example/x.json' }, _cur: '26.5.1' });
-  ok(out[2] && /buiten de HeishaMoNR-repo/.test(out[2].payload) && !c.stores.default.WPU.latest, 'evil flowUrl refused, latest untouched');
+  ok(out[2] && /outside the HeishaMoNR repo/.test(out[2].payload) && !c.stores.default.WPU.latest, 'evil flowUrl refused, latest untouched');
   c = mk();
   out = c.run('wpu0019', { statusCode: 200, payload: { version: '26.6.0', flowUrl: 'https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/flows%20(26.6.0%20stable).json' }, _cur: 'onbekend' });
-  ok(out[2] && /onbekend/.test(out[2].payload) && out[1].payload === '26.6.0', 'unknown cur -> honest message, NO phantom update!', [out[1].payload, out[2] && out[2].payload]);
+  ok(out[2] && /unknown/.test(out[2].payload) && out[1].payload === '26.6.0', 'unknown cur -> honest message, NO phantom update!', [out[1].payload, out[2] && out[2].payload]);
   c = mk();
   out = c.run('wpu0019', { statusCode: 404, payload: 'Not Found', _cur: '26.5.1' });
   ok(out[3] && out[3].url === 'https://github.com/edterbak/HeishaMoNR', 'version.json 404 -> repo-scan fallback');
   c = mk();
   out = c.run('wpu0019', { statusCode: 200, payload: { version: '26.6.0-beta', flowUrl: 'https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/x.json' }, _cur: '26.5.1' });
-  ok(out[2] && /onverwacht versie-formaat/.test(out[2].payload), 'non-X.Y.Z refused');
+  ok(out[2] && /unexpected version format/.test(out[2].payload), 'non-X.Y.Z refused');
 }
 
 // ---------------- T9: repo-scan fallback ----------------
@@ -206,7 +206,7 @@ section('T6 wpu001a repo-scan (filename regex incl. real root file)');
   ok(c.stores.default.WPU.latest.flowUrl === 'https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/flows%20(26.5.1%20stable).json', 'raw URL pinned+encoded', c.stores.default.WPU.latest.flowUrl);
   const c2 = makeCtx(); c2.stores.default.WPU = { currentVersion: 'onbekend' };
   const out2 = c2.run('wpu001a', { statusCode: 200, payload: html });
-  ok(out2[2] && /onbekend/.test(out2[2].payload) && out2[1].payload === '26.5.1', 'unknown cur -> honest scan message');
+  ok(out2[2] && /unknown/.test(out2[2].payload) && out2[1].payload === '26.5.1', 'unknown cur -> honest scan message');
 }
 
 // ---------------- T10: download integrity ----------------
@@ -221,7 +221,7 @@ section('T7 wpu0021 changelog-integrity on REAL 26.5.1 download');
   const c2 = makeCtx();
   c2.stores.default.WPU = { latest: { version: '26.6.0', flowUrl: 'x', checkedAt: Date.now() } };
   const out2 = c2.run('wpu0021', { statusCode: 200, payload: newPkg2651, url: 'u' });
-  ok(out2[1] && /verificatie mislukt/.test(out2[1].payload) && /26\.5\.1/.test(out2[1].payload), 'version mismatch refused (real file says 26.5.1, expected 26.6.0)');
+  ok(out2[1] && /verification failed/.test(out2[1].payload) && /26\.5\.1/.test(out2[1].payload), 'version mismatch refused (real file says 26.5.1, expected 26.6.0)');
 }
 
 // ---------------- T11: the merge core against the REAL package ----------------
@@ -307,10 +307,10 @@ section('T11 wpu0031 deploy result incl. 409');
 {
   const c = makeCtx();
   let out = c.run('wpu0031', { statusCode: 200, _newCount: 3600 });
-  ok(/geslaagd/.test(out.payload), '200 -> success message');
+  ok(/succeeded/.test(out.payload), '200 -> success message');
   out = c.run('wpu0031', { statusCode: 200, _mergeStats: { nieuw: 15, bijgewerkt: 81, verwijderd: 1, ongewijzigd: 3451 }, _newNames: ['Get flows', 'Update flow'] });
-  ok(/15 nieuwe node/.test(out.payload) && /Get flows/.test(out.payload), 'stats toast: new count + names');
-  ok(/81 bijgewerkt/.test(out.payload) && /1 verwijderd/.test(out.payload) && /3451 ongewijzigd/.test(out.payload), 'stats toast: updated/removed/unchanged counts');
+  ok(/15 new node/.test(out.payload) && /Get flows/.test(out.payload), 'stats toast: new count + names');
+  ok(/81 updated/.test(out.payload) && /1 removed/.test(out.payload) && /3451 unchanged/.test(out.payload), 'stats toast: updated/removed/unchanged counts');
   out = c.run('wpu0031', { statusCode: 409 });
   ok(/409/.test(out.payload), '409 rev conflict -> clear message');
 }
@@ -338,7 +338,7 @@ section('T12 wpu0020 backup dump (WPU_ excluded, token in memory)');
   ok(out2._client && out2._client.socketid === 'sock1', '_client preserved for private toast');
   ok(out2.payload.includes('/wpupdate/backup?token=' + c.stores.memory.WPU_dlToken), 'relative token link present');
   ok(out2.payload.includes('<a href="/wpupdate/backup?token=' + c.stores.memory.WPU_dlToken + '"'), 'v4.9.1: clickable anchor in toast (DB1 escapes non-raw text)');
-  ok(out2.payload.includes('Download de backup</a>'), 'v4.9.1: anchor label present');
+  ok(out2.payload.includes('Download the backup</a>'), 'v4.9.1: anchor label present');
   const t76 = tab.find(n => n.id === 'wpu0076');
   ok(t76 && t76.raw === true, 'v4.9.1: private toast is raw:true so the anchor renders');
   ok(!/evil|localhost|127\.0\.0\.1|:\d{4}\//.test(out2.payload.match(/Download[^\s]*/)[0]), 'no absolute host in link', out2.payload.match(/Download[^\s]*/)[0]);
@@ -390,15 +390,15 @@ section('T15 restore chain: inspect + snapshot-gated apply');
 {
   const c = makeCtx();
   let out = c.run('wpu0052', { payload: 'not json' });
-  ok(out[1] && /Geen geldig/.test(out[1].payload), 'corrupt backup -> error');
+  ok(out[1] && /No valid backup/.test(out[1].payload), 'corrupt backup -> error');
   out = c.run('wpu0052', { payload: JSON.stringify({ meta: { generated: '2026-11-21T10:00:00Z', flowVersion: '26.5.1' }, globalContext: { F_RTC: { mode: 'heat' } } }) });
-  ok(out[0] && /Bevestig/.test(out[0].payload) && c.stores.default.WPU_restore.backup.globalContext.F_RTC, 'valid backup -> confirm + staged');
+  ok(out[0] && /Confirm restore/.test(out[0].payload) && c.stores.default.WPU_restore.backup.globalContext.F_RTC, 'valid backup -> confirm + staged');
   // apply WITHOUT snapshot confirmation -> refuse
   out = c.run('wpu0055', { payload: 'x' });
-  ok(out[1] && /gestopt/.test(out[1].payload), 'no snapshot confirmation -> REFUSED');
+  ok(out[1] && /stopped/.test(out[1].payload), 'no snapshot confirmation -> REFUSED');
   // apply WITH confirmation -> restores
   out = c.run('wpu0055', { filename: '/data/wp-prerestore-snapshot-2026-11-21T10-00-00.json' });
-  ok(out[0] && /Hersteld: 1/.test(out[0].payload), 'with snapshot filename -> applied');
+  ok(out[0] && /Restored: 1/.test(out[0].payload), 'with snapshot filename -> applied');
   ok(c.global.get('F_RTC').mode === 'heat', 'global context restored');
   ok(c.stores.default.WPU_restore === null || c.stores.default.WPU_restore === undefined, 'pending cleared');
 }
@@ -428,7 +428,7 @@ section('T16 v4.10 flow-download: phase, dump+token, private link, endpoint');
   // wpu0081 without cached flows -> error hub
   const c2 = makeCtx();
   const o3b = c2.run('wpu0081', {});
-  ok(o3b[0] === null && o3b[1] && /fout/.test(o3b[1].topic), 'no cached flows -> error output');
+  ok(o3b[0] === null && o3b[1] && /error/.test(o3b[1].topic), 'no cached flows -> error output');
   // wpu0084 endpoint: 404 / 403 / 403-expired / 200
   let r = c2.run('wpu0084', { req: { query: {} } });
   ok(r.statusCode === 404, 'no dump -> 404');
