@@ -2,7 +2,15 @@
 
 All dates are 21 Nov 2026: this tab was built, reviewed and hardened in one day. Key facts per version: the button behaviour and merge rules are stable since v4.6; earlier versions are mostly of historical interest.
 
-## v4.11.0 (current, 83 nodes)
+## v4.11.1 (current, 83 nodes)
+
+Post-v4.11 sanity check (full audit of HEAD: structure, English claim, self-update chain): the tab itself, the validation rules and the wpu-only merge are sound. One real gap found: the three new self-update `http request` nodes (`wpu0092` version.json, `wpu0094` update-tab.json, `wpu0097` palette GET /nodes) were **not in the catch scope of `wpu0059`**, so a network-level failure (DNS, GitHub unreachable, timeout) stopped the chain with no toast at all — only a silent "no catch node" line in the Node-RED log. Every http request node had been covered since the v4.7 fix; v4.11.0 added these three without extending the scope.
+
+- Fix: `wpu0059.scope` now also lists `wpu0092`, `wpu0094`, `wpu0097` — a network error during "Update the updater" produces the same readable toast as every other http failure (wpu005a reads `msg.error.message` from the runtime; HTTP-error statuses were already handled per node by `wpu0093`/`wpu0095`/`wpu0096`).
+- Harness: new structural section **T19** asserts every `http request` node is in the `wpu0059` scope and every `file`/`file in` node in the `wpu0056` scope -> **145/145** (3 new asserts).
+- Tab node `version` and `version.json` bumped to 4.11.1 so the running v4.11.0 tab offers this update via [Update the updater] itself (first live proof of the self-update chain).
+
+## v4.11.0 (83 nodes)
 
 **Self-update of the updater itself** ("Update the updater" button, `wpu0090`, topic `selfupdate`):
 
