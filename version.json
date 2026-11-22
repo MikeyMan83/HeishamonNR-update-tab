@@ -1,5 +1,5 @@
 {
-  "version": "4.11.1",
+  "version": "4.11.2",
   "flowUrl": "https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json",
-  "notes": "Catch-scope fix: the three self-update http nodes now produce a readable error toast on network failures. Self-update: 'Update the updater' button, pinned to this repo, wpu-only merge, palette pre-flight, pre-update snapshot, atomic POST /flows with rev."
+  "notes": "Error-reporting fix: deploy outcomes (success/409/failed POST) now leave an audit trail in the Node-RED log; the only error class without a container-log line is closed."
 }
