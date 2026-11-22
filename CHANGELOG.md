@@ -1,8 +1,18 @@
 # Changelog
 
-All dates are 21 Nov 2026: this tab was built, reviewed and hardened in one day. Key facts per version: the button behaviour and merge rules are stable since v4.6; earlier versions are mostly of historical interest.
+All dates are 21 Nov 2026: this tab was built, reviewed and hardened in one day. Key facts per version: the button behaviour and merge rules are stable since v4.6; earlier versions are mostly of historical interest. (v4.12.x follow-ups: 22 Nov 2026.)
 
-## v4.12.0 (current, 98 nodes)
+## v4.12.1 (current, 98 nodes)
+
+Layout consistency, English throughout, and an honest correction:
+
+- **Consistent grid**: the Update section left a ragged row: Check(4) + RUN(4) + Installed(3) + Available(3) summed to 14 columns, so Available wrapped onto a ragged second row next to the 8-wide Status field. Fixed: Installed/Available are 2 columns each (Check 4 + RUN 4 + Installed 2 + Available 2 = one full 12-column row), Status is full width (12); the Admin inputs are 6+6; the Backup & export bottom row is Download flow(4) + Backup folder(8) = 12. Every section now packs into full 12-wide rows (new harness section T22).
+- **English code comments and stats keys**: the "No more Dutch" request went further than the v4.12.0 UI-string pass. The remaining ~180 Dutch code comments across 22 function nodes are translated to English, and the internal merge-statistics keys `{nieuw, bijgewerkt, verwijderd, ongewijzigd}` renamed to `{added, updated, removed, unchanged}` (producers `wpu0030`/`wpu0096`, consumer `wpu0031`). No user-visible behavior change; zero Dutch left in comment lines, code lines and user-visible fields (all three now asserted).
+- **Correction of the v4.12.0 "Download fix" claim** (retracted on evidence): that bullet claimed `wpu0029`/`wpu0085` previously exported `headers: []` (array), which made Node-RED 5.x drop the serve functions' `msg.headers`. Both parts are wrong. (1) The v4.11.2 -> v4.12.0 diff does not touch the download path, and v4.11.2 already exported `headers: {}` (empty object) on both nodes. (2) The Node-RED 5.0.1 runtime source (`@node-red/nodes` core/network/21-httpin.js, `HTTPOut`) merges every `msg.headers` entry over `this.headers = n.headers || {}` unconditionally, so the function-provided `Content-Type` + `Content-Disposition: attachment` were sent before v4.12.0 as well. The browser downloads (backup, flow) work and always did via the function-set headers; the v4.12.0 commit's "download fix" changed nothing on this path. The harness keeps asserting the empty-object headers and the Content-Disposition strings.
+- Harness: stats-key asserts renamed to the English keys; new section **T22** (full 12-wide row packing per section, including the string-typed `ui_group` width `"12"`; the section width fixes; English stats keys in producers and consumer; zero Dutch in code comments and code lines) -> **176/176**.
+- Tab node `version` and `version.json` bumped to 4.12.1, so a running 4.12.0 tab offers this update via [Update the updater] itself.
+
+## v4.12.0 (98 nodes)
 
 Layout, UX parity and the download fix:
 
