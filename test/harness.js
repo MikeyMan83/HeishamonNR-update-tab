@@ -254,11 +254,11 @@ section('T8 wpu0030 id-stable merge, real 26.5.1 local+package, updater tab pres
   ok(gc && gc.env.some(e => e.name === 'MIJN_VAR'), 'local global-config env merged (MIJN_VAR survives)');
   ok(out[2] && /wp-preupdate-flows-/.test(out[2].filename), 'pre-update snapshot emitted', out[2] && out[2].filename);
   const ms = post._mergeStats;
-  ok(ms && typeof ms.nieuw === 'number', 'merge stats present on POST msg', ms);
-  ok(ms.nieuw === 0, 'stats: local is already 26.5.1 -> 0 new', ms.nieuw);
-  ok(ms.bijgewerkt >= 1 && ms.bijgewerkt <= 3, 'stats: locally reconfigured nodes counted as updated (broker, global-config env)', ms.bijgewerkt);
-  ok(ms.verwijderd === 0, 'stats: nothing removed in id-stable scenario', ms.verwijderd);
-  ok(ms.nieuw + ms.bijgewerkt + ms.ongewijzigd === 3562, 'stats: new+updated+unchanged == package size', ms.nieuw + ms.bijgewerkt + ms.ongewijzigd);
+  ok(ms && typeof ms.added === 'number', 'merge stats present on POST msg', ms);
+  ok(ms.added === 0, 'stats: local is already 26.5.1 -> 0 new', ms.added);
+  ok(ms.updated >= 1 && ms.updated <= 3, 'stats: locally reconfigured nodes counted as updated (broker, global-config env)', ms.updated);
+  ok(ms.removed === 0, 'stats: nothing removed in id-stable scenario', ms.removed);
+  ok(ms.added + ms.updated + ms.unchanged === 3562, 'stats: new+updated+unchanged == package size', ms.added + ms.updated + ms.unchanged);
   ok(Array.isArray(post._newNames) && post._newNames.length === 0, 'newNames empty when nothing new', post._newNames);
   ok(flows.length === local.length - (newIds.size) + newPkg2651.length - 0 || true, 'node count sane', flows.length + ' vs local ' + local.length);
   console.log('  info: merged flows =', flows.length, 'nodes (local had', local.length + ', package', newPkg2651.length + ')');
@@ -309,7 +309,7 @@ section('T11 wpu0031 deploy result incl. 409');
   const c = makeCtx();
   let out = c.run('wpu0031', { statusCode: 200, _newCount: 3600 });
   ok(/succeeded/.test(out.payload), '200 -> success message');
-  out = c.run('wpu0031', { statusCode: 200, _mergeStats: { nieuw: 15, bijgewerkt: 81, verwijderd: 1, ongewijzigd: 3451 }, _newNames: ['Get flows', 'Update flow'] });
+  out = c.run('wpu0031', { statusCode: 200, _mergeStats: { added: 15, updated: 81, removed: 1, unchanged: 3451 }, _newNames: ['Get flows', 'Update flow'] });
   ok(/15 new node/.test(out.payload) && /Get flows/.test(out.payload), 'stats toast: new count + names');
   ok(/81 updated/.test(out.payload) && /1 removed/.test(out.payload) && /3451 unchanged/.test(out.payload), 'stats toast: updated/removed/unchanged counts');
   out = c.run('wpu0031', { statusCode: 409 });
@@ -542,7 +542,7 @@ section('T18 v4.11 self-update: phase, pinned version.json, validation, wpu-only
   ok(nonWpuLocal.every(n => mids.includes(n.id)), 'ALL non-wpu local nodes (real package + personal tab) preserved');
   ok(merged.filter(n => String(n.id).startsWith('wpu')).length === newTab.length, 'wpu set == new tab exactly');
   ok(merged.some(n => n.id === 'mytab1') && merged.some(n => n.id === '92e5b2c.00a8b5'), 'personal tab + broker untouched');
-  ok(post._mergeStats && post._mergeStats.ongewijzigd + post._mergeStats.bijgewerkt + post._mergeStats.nieuw + post._mergeStats.verwijderd === local.filter(n => String(n.id).startsWith('wpu')).length, 'stats add up to old wpu count', post._mergeStats);
+  ok(post._mergeStats && post._mergeStats.unchanged + post._mergeStats.updated + post._mergeStats.added + post._mergeStats.removed === local.filter(n => String(n.id).startsWith('wpu')).length, 'stats add up to old wpu count', post._mergeStats);
   ok(r7[2] && /wp-preupdate-flows-/.test(r7[2].filename), 'pre-update snapshot emitted');
   // palette missing a type -> refuse
   const c8 = makeCtx();
@@ -613,6 +613,46 @@ section('T21 v4.12: dashboard sections, updater check-then-apply UX, response-no
     if (typeof n[f] === 'string' && dutch.test(n[f])) leaks.push(n.id + '.' + f);
   }
   ok(leaks.length === 0, 'no Dutch left in user-visible node fields (name/label/tooltip/ok/cancel)', leaks);
+}
+
+// ---------------- T22: v4.12.1 consistent grid, English comments/stats ----------------
+section('T22 v4.12.1: full-width dashboard rows, English code comments, English stats keys');
+{
+  const byid = Object.fromEntries(tab.map(n => [n.id, n]));
+  const groups = tab.filter(n => n.type === 'ui_group');
+  const widgets = tab.filter(n => String(n.type).startsWith('ui_') && n.type !== 'ui_tab' && n.type !== 'ui_group' && n.type !== 'ui_toast');
+  const ragged = [];
+  for (const g of groups) {
+    const gw = Number(g.width) || 12; // ui_group exports width as a string ("12")
+    const items = widgets.filter(w => w.group === g.id).sort((a, b) => a.order - b.order);
+    let used = 0, full = true;
+    for (const it of items) {
+      if (used > 0 && used + it.width > gw) full = false;
+      used += it.width;
+      if (used === gw) { used = 0; } else if (used > gw) { full = false; used = used % gw; }
+    }
+    if (used !== 0) full = false;
+    if (!full) ragged.push(g.name);
+  }
+  ok(ragged.length === 0, 'every section packs into full 12-wide rows (no ragged wrapping)', ragged);
+  ok(byid['wpu0007'].width === 2 && byid['wpu0008'].width === 2 && byid['wpu0009'].width === 12, 'Update section: Check(4)+RUN(4)+Installed(2)+Available(2) on one row, Status full width (12)');
+  ok(byid['wpu0005'].width === 6 && byid['wpu0006'].width === 6, 'Admin section: user(6)+password(6) fill the row');
+  ok(byid['wpu0058'].width === 8 && byid['wpu0080'].width === 4, 'Backup & export row 2: Download flow(4)+Backup folder(8) fill the row');
+  const f30 = byid['wpu0030'].func, f96 = byid['wpu0096'].func, f31 = byid['wpu0031'].func;
+  ok(/added: stNew\.length/.test(f30) && /unchanged: stSame/.test(f30) && !/\bnieuw:/.test(f30), 'wpu0030 _mergeStats uses English keys (added/updated/removed/unchanged)');
+  ok(/added: stNew\.length/.test(f96) && !/\bnieuw:/.test(f96), 'wpu0096 self-merge stats use English keys');
+  ok(/s\.added/.test(f31) && /s\.unchanged/.test(f31) && !/s\.nieuw/.test(f31), 'wpu0031 deploy toast consumes the English stats keys');
+  const nl = /à|é|í|ó|ú|ë|ï|ö|ü|\b(de|het|niet|van|met|voor|door|naar|bij|als|dan|nog|alleen|geen|wordt|worden|zit|zitten|staat|staan|gaat|heeft|hebben|moet|moeten|kan|kunt|deze|die|hier|daar|zijn|wel|weer|terug|oude|nieuw\b|nieuwe|lokaal|huidige|draaiende|gebruiker|wachtwoord|geheugen|schrijf|automatisch|handmatig|voorkomt|voorkomen|blijft\b|blijven\b|valt\b|vallen\b|opgehaald|opgeslagen|gewijzigd\b|ongewijzigd\b|verwijderd\b|bijgewerkt\b|vergelijkt|draaide|pakket|tabblad|controleer|melding|meldingen|generiek|persoonlijke|officiële|fase\b|veld|velden|knop|bestand|bestanden|schijf|dag\b|vandaag|twee|drie|vier|elf|twaalf|waarschijnlijk|anders|echt\b|echte|zojuist|alléén|één|uit[0-9])\b/i;
+  const nlComments = [], nlCode = [];
+  for (const n of tab) {
+    if (typeof n.func !== 'string') continue;
+    n.func.split('\n').forEach(L => {
+      if (L.trim().startsWith('//') && nl.test(L)) nlComments.push(n.id + ': ' + L.trim().slice(0, 80));
+      if (!L.trim().startsWith('//') && nl.test(L)) nlCode.push(n.id + ': ' + L.trim().slice(0, 80));
+    });
+  }
+  ok(nlComments.length === 0, 'no Dutch left in code comments', nlComments);
+  ok(nlCode.length === 0, 'no Dutch left in code lines (literals/identifiers)', nlCode);
 }
 
 console.log('TOTAL: ' + pass + ' passed, ' + fail + ' failed');
