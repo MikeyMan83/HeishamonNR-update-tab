@@ -736,7 +736,9 @@ section('T24 v4.12.6: a single [Check for updates] click refreshes both version 
   c2.flow.set('WPU_localFlows', tab, 'memory');
   const tabVer = tab.find(n => n.type === 'tab').version;
   const rNew = c2.run('wpu0093', { statusCode: 200, payload: { version: '9.9.9', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json', notes: 'x' }, _phase: 'selfcheck' });
-  ok(rNew && rNew[1] && rNew[1].payload === 'Tab update available: 9.9.9. Press [Update tab]. Notes: x', 'tab side of the merged check shows the update as a full sentence in the same style as Flow status (notes included)', rNew && rNew[1] && rNew[1].payload);
+  ok(rNew && rNew[1] && rNew[1].payload === 'Tab update available: 9.9.9. Press [Update tab].', 'tab side of the merged check shows the update as a full sentence in the same style as Flow status (v4.12.11: notes no longer appended inline, they were clipped on the widget)', rNew && rNew[1] && rNew[1].payload);
+  const stNew = c2.flow.get('WPU');
+  ok(stNew && stNew.selfLatest && stNew.selfLatest.notes === 'x', 'notes from version.json stay in flow context (WPU.selfLatest.notes), just no longer in the field', stNew && stNew.selfLatest);
   ok(rNew && rNew[0] === null, 'selfcheck never downloads ([Update tab] stays the only apply)');
   const rSame = c2.run('wpu0093', { statusCode: 200, payload: { version: tabVer, flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' }, _phase: 'selfcheck' });
   ok(rSame && rSame[1] && rSame[1].payload === 'Up to date (' + tabVer + ').', 'tab side of the merged check shows the same short up-to-date confirmation as the Flow status check and changes nothing', rSame && rSame[1] && rSame[1].payload);

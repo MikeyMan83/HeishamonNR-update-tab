@@ -1,5 +1,5 @@
 {
-  "version": "4.12.10",
+  "version": "4.12.11",
   "flowUrl": "https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json",
-  "notes": "Wording: both status fields now confirm with the short \"Up to date (x.y.z).\" instead of a long sentence (flow check, repo-scan fallback and tab check all aligned); update-available messages and behavior unchanged."
+  "notes": "Tab status field shows the actionable sentence only; release notes no longer appended inline (they were clipped on the widget). See CHANGELOG.md."
 }

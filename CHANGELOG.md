@@ -1,4 +1,11 @@
-## v4.12.10 (current, 100 nodes)
+## v4.12.11 (current, 100 nodes)
+
+Live finding 24 Nov (dashboard screenshot while 4.12.10 was waiting): when an update is available, the Tab status field appended the repo release notes to the actionable sentence, but the notes text is longer than the field, so the line arrived clipped mid-sentence on the dashboard.
+
+- wpu0093: the Tab status field now shows the actionable sentence only ("Tab update available: x.y.z. Press [Update tab].", plus " (current version unknown)" when applicable). Release notes are no longer rendered inline; the CHANGELOG stays the readable source, and the notes string still lands in flow context (WPU.selfLatest.notes).
+- version.json notes kept short, since a future display change might want to show them again.
+- Harness: T24 now pins the notes-free sentence and adds an assert that WPU.selfLatest.notes still stores the notes -> **232/232**.
+## v4.12.10 (100 nodes)
 
 Wording follow-up on v4.12.9 (user feedback: "up to date might be the simpler wording"): the up-to-date confirmation on both status fields is now the short, glanceable "Up to date (x.y.z)." instead of the sentence "You are already running the latest (tab) version (x.y.z)". Status displays should confirm quickly; the actionable update messages keep their full sentences with the button to press. Applied consistently to the Tab status field (wpu0093), the Flow status check (wpu0019) and the repo-scan fallback (wpu001a), so both status fields still speak one identical template:
 
