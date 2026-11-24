@@ -1,4 +1,13 @@
-## v4.12.9 (current, 100 nodes)
+## v4.12.10 (current, 100 nodes)
+
+Wording follow-up on v4.12.9 (user feedback: "up to date might be the simpler wording"): the up-to-date confirmation on both status fields is now the short, glanceable "Up to date (x.y.z)." instead of the sentence "You are already running the latest (tab) version (x.y.z)". Status displays should confirm quickly; the actionable update messages keep their full sentences with the button to press. Applied consistently to the Tab status field (wpu0093), the Flow status check (wpu0019) and the repo-scan fallback (wpu001a), so both status fields still speak one identical template:
+
+- **Tab status**: "Up to date (4.12.10)." (was "You are already running the latest tab version (...).").
+- **Flow status**: "Up to date (26.5.1).", from both the version.json check and the repo-scan fallback.
+- The update-available messages are unchanged ("Tab update available: x.y.z. Press [Update tab]."), as is the boot sentence "Running tab version 4.12.10." (version bump only).
+- No runtime behavior change; the version is bumped on all three spots so running 4.12.9 tabs self-update.
+- Harness: the up-to-date display asserts in T5/T13/T24/T26 moved to the new wording -> **231/231**.
+## v4.12.9 (100 nodes)
 
 Consistent dashboard vocabulary and section layout (user feedback on v4.12.8: "quite some inconsistency with the layout and the wording"). The ruleset is UI/UX best practice (one concept gets one name and one sentence style; a confirm button names its object; tooltips name their buttons) plus alignment with the conventions of Ed's own flow (Title Case noun captions, inputs above outputs, short verb-first button labels):
 

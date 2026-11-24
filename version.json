@@ -1,5 +1,5 @@
 {
-  "version": "4.12.9",
+  "version": "4.12.10",
   "flowUrl": "https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json",
-  "notes": "Layout and wording sweep: four Title-Case section captions (Flow / This tab / Backup / Admin), the Tab version field becomes the Tab status field in the same style and sentence format as the Flow status field, [Confirm restore] becomes [Confirm restore backup], tooltips name their buttons. No runtime change."
+  "notes": "Wording: both status fields now confirm with the short \"Up to date (x.y.z).\" instead of a long sentence (flow check, repo-scan fallback and tab check all aligned); update-available messages and behavior unchanged."
 }

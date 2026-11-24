@@ -182,7 +182,7 @@ section('T5 wpu0019 version compare + allowlist + unknown-cur');
   ok(c.stores.default.WPU.latest.version === '26.6.0' && c.stores.default.WPU.latest.flowUrl.includes('%20'), 'latest stored, url normalized', c.stores.default.WPU.latest.flowUrl);
   c = mk();
   out = c.run('wpu0019', { statusCode: 200, payload: { version: '26.5.1', flowUrl: 'https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/flows%20(26.5.1%20stable).json' }, _cur: '26.5.1' });
-  ok(/latest version/.test(out[2].payload), 'same version -> no update');
+  ok(out[2].payload === 'Up to date (26.5.1).', 'same version -> short "Up to date (26.5.1)." display, no update');
   c = mk();
   out = c.run('wpu0019', { statusCode: 200, payload: { version: '26.6.0', flowUrl: 'https://evil.example/x.json' }, _cur: '26.5.1' });
   ok(out[2] && /outside the HeishaMoNR repo/.test(out[2].payload) && !c.stores.default.WPU.latest, 'evil flowUrl refused, latest untouched');
@@ -508,7 +508,7 @@ section('T18 v4.11 self-update: phase, pinned version.json, validation, wpu-only
   ok(r[2] && /outside the HeishamonNR-update-tab repo/.test(r[2].payload) && !r[0], 'evil flowUrl refused');
   c3 = mk93();
   r = c3.run('wpu0093', { statusCode: 200, _phase: 'selfupdate', payload: { version: '4.10.4', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
-  ok(r[1] && r[1].payload === 'You are already running the latest tab version (4.10.4).' && !r[0], 'selfupdate + same version -> up-to-date sentence display, no download', r[1] && r[1].payload);
+  ok(r[1] && r[1].payload === 'Up to date (4.10.4).' && !r[0], 'selfupdate + same version -> "Up to date (4.10.4)." display, no download', r[1] && r[1].payload);
   c3 = mk93();
   r = c3.run('wpu0093', { statusCode: 200, _phase: 'selfupdate', payload: { version: '4.11-beta', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
   ok(r[2] && /unexpected version format/.test(r[2].payload), 'non-X.Y.Z refused');
@@ -739,7 +739,7 @@ section('T24 v4.12.6: a single [Check for updates] click refreshes both version 
   ok(rNew && rNew[1] && rNew[1].payload === 'Tab update available: 9.9.9. Press [Update tab]. Notes: x', 'tab side of the merged check shows the update as a full sentence in the same style as Flow status (notes included)', rNew && rNew[1] && rNew[1].payload);
   ok(rNew && rNew[0] === null, 'selfcheck never downloads ([Update tab] stays the only apply)');
   const rSame = c2.run('wpu0093', { statusCode: 200, payload: { version: tabVer, flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' }, _phase: 'selfcheck' });
-  ok(rSame && rSame[1] && rSame[1].payload === 'You are already running the latest tab version (' + tabVer + ').', 'tab side of the merged check shows the same up-to-date sentence as the Flow status check and changes nothing', rSame && rSame[1] && rSame[1].payload);
+  ok(rSame && rSame[1] && rSame[1].payload === 'Up to date (' + tabVer + ').', 'tab side of the merged check shows the same short up-to-date confirmation as the Flow status check and changes nothing', rSame && rSame[1] && rSame[1].payload);
 }
 
 // ---------------- T25: restore-helper.json (disaster recovery from the LOCAL download) ----------------
@@ -792,7 +792,7 @@ section('T26 v4.12.8: an editor Deploy strips the tab node version; wpu0093 fall
   const rNew = c.run('wpu0093', { statusCode: 200, _phase: 'selfcheck', payload: { version: '9.9.9', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
   ok(rNew && rNew[1] && rNew[1].payload === 'Tab update available: 9.9.9. Press [Update tab].', 'version stripped by an editor Deploy -> cur restored from the boot payload, so the sentence reports the real running version (no phantom "unknown")', rNew && rNew[1] && rNew[1].payload);
   const rSame = c.run('wpu0093', { statusCode: 200, _phase: 'selfcheck', payload: { version: tabNode.version, flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
-  ok(rSame && rSame[1] && rSame[1].payload === 'You are already running the latest tab version (' + tabNode.version + ').', 'through the fallback, a current tab reports the up-to-date sentence instead of offering a phantom update', rSame && rSame[1] && rSame[1].payload);
+  ok(rSame && rSame[1] && rSame[1].payload === 'Up to date (' + tabNode.version + ').', 'through the fallback, a current tab reports the up-to-date display instead of offering a phantom update', rSame && rSame[1] && rSame[1].payload);
   const bare = JSON.parse(JSON.stringify(stripped));
   bare.splice(bare.findIndex(n => n.id === 'wpu00c2'), 1);
   const c2 = makeCtx(); c2.stores.default.WPU = {}; c2.stores.memory.WPU_localFlows = bare;
