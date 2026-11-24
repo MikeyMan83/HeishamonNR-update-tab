@@ -2,7 +2,14 @@
 
 - README gained a "Context store note": the tab keeps the session password, tokens and the large in-flight dumps in a context store NAMED `memory` by design (volatile data never on disk). Installs using Node-RED's default template store names (`memoryOnly`/`file`) lack that store name, so Node-RED logs its "Unknown context store 'memory' ... Using default store." fallback warning on every use. The fix is a one-line settings.js alias, documented in the README. No flow change: the named-store design is intentional (a function node cannot discover the configured store names at runtime).
 
-## v4.12.11 (current, 100 nodes)
+## v4.12.12 (current, 100 nodes)
+
+Dashboard-family guard in the self-update merge (`wpu0096`): before merging, the dashboard framework of the local `wpu*` nodes is compared with the new tab's (DB1 `ui_tab`/`ui_*` vs DB2 `ui-page`/`ui-*`). A framework switch (e.g. the DB2 file on the `dashboard2` branch) is **refused with a clear error before any POST** - the tab would otherwise leave the current dashboard menu (`/ui` vs `/dashboard`) and its widgets would register nowhere. A framework-switching file can now only arrive by deliberate manual import. Same-family updates are unaffected.
+
+- Harness: 2 new asserts in T18 against `wpu0096` (refuse db1->db2 before POST with the guard message; allow db1->db1) -> **234/234**.
+- Tab node `version`, boot-inject payload and `version.json` bumped to 4.12.12 together, so a running 4.12.11 tab offers this via [Update tab].
+
+## v4.12.11 (100 nodes)
 
 Live finding 24 Nov (dashboard screenshot while 4.12.10 was waiting): when an update is available, the Tab status field appended the repo release notes to the actionable sentence, but the notes text is longer than the field, so the line arrived clipped mid-sentence on the dashboard.
 

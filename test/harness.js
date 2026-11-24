@@ -555,6 +555,24 @@ section('T18 v4.11 self-update: phase, pinned version.json, validation, wpu-only
   const pal2 = [{ nodes: types.filter(t => t !== 'ui_button').map(t => ({ type: t, types: [t], enabled: true })) }];
   const r8 = c8.run('wpu0096', { statusCode: 200, payload: pal2 });
   ok(r8[1] && /ui_button/.test(r8[1].payload) && r8[0] === null, 'missing palette type refuses BEFORE POST');
+  // v4.12.12: dashboard-family guard in wpu0096 (refuse db1->db2 before POST, allow same-family)
+  const db2Tab = JSON.parse(JSON.stringify(newTab));
+  const toDb2 = { 'ui_tab': 'ui-page', 'ui_group': 'ui-group', 'ui_button': 'ui-button', 'ui_text': 'ui-text', 'ui_text_input': 'ui-text-input', 'ui_toast': 'ui-notification', 'ui_template': 'ui-template' };
+  for (const n of db2Tab) if (toDb2[n.type]) n.type = toDb2[n.type];
+  const db2Types = [...new Set(db2Tab.filter(n => n.type && !['tab','subflow','group','junction'].includes(n.type) && !n.type.startsWith('subflow:')).map(n => n.type))];
+  const palDb2 = [{ nodes: db2Types.map(t => ({ type: t, types: [t], enabled: true })) }];
+  const c9 = makeCtx();
+  c9.stores.default.WPU = { rev: 'r', apiV2: true, selfLatest: { version: '4.12.12' } };
+  c9.stores.memory.WPU_localFlows = local;   // local wpu* nodes are DB1 (ui_tab/ui_*)
+  c9.stores.memory.WPU_newTab = db2Tab;      // new tab is DB2 (ui-page/ui-*)
+  const r9 = c9.run('wpu0096', { statusCode: 200, payload: palDb2 });
+  ok(r9[1] && /dashboard framework change \(db1 -> db2\)/.test(r9[1].payload) && r9[0] === null && r9[2] === null, 'v4.12.12 guard: db1->db2 self-update refused BEFORE POST/snapshot, nothing changed', r9[1] && r9[1].payload);
+  const c10 = makeCtx();
+  c10.stores.default.WPU = { rev: 'r', apiV2: true, selfLatest: { version: '4.12.12' } };
+  c10.stores.memory.WPU_localFlows = local;
+  c10.stores.memory.WPU_newTab = newTab;     // db1 -> db1
+  const r10 = c10.run('wpu0096', { statusCode: 200, payload: pal });
+  ok(r10[0] && r10[0].method === 'POST' && r10[1] === null, 'v4.12.12 guard: same-family (db1->db1) self-update allowed through to the POST');
 }
 
 section('T19 v4.11.1 network-catch hygiene (feedback on network errors)');

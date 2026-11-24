@@ -1,5 +1,5 @@
 {
-  "version": "4.12.11",
+  "version": "4.12.12",
   "flowUrl": "https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json",
-  "notes": "Tab status field shows the actionable sentence only; release notes no longer appended inline (they were clipped on the widget). See CHANGELOG.md."
+  "notes": "Dashboard-family guard in the self-update merge (wpu0096): a self-update that would switch dashboard framework (DB1 ui_tab/ui_* vs DB2 ui-page/ui-*) is refused before any POST; framework-switching files only arrive by manual import. Same-family updates unchanged. See CHANGELOG.md."
 }
