@@ -1,5 +1,5 @@
 {
-  "version": "5.0.0",
+  "version": "4.12.11",
   "flowUrl": "https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json",
-  "notes": "Dashboard 2.0 (@flowfuse/node-red-dashboard, /dashboard) migration: ui-page /wp-update, ui-groups and widgets converted (ui-toast -> ui-notification; 60 s download notifications via msg.ui_update.displayTime). The file does NOT ship a ui-base/ui-theme (importing several Dashboard 2.0 tab files would put two ui-base nodes on /dashboard, which breaks widget wiring): assign the page + notification nodes to your single ui-base in the editor sidebar. Requires @flowfuse/node-red-dashboard installed. Logic unchanged from v4.12.11 except the two toast messages."
+  "notes": "Tab status field shows the actionable sentence only; release notes no longer appended inline (they were clipped on the widget). See CHANGELOG.md."
 }
