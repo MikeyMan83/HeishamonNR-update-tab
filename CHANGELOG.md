@@ -1,4 +1,16 @@
-## v4.12.8 (current, 98 nodes)
+## v4.12.9 (current, 100 nodes)
+
+Consistent dashboard vocabulary and section layout (user feedback on v4.12.8: "quite some inconsistency with the layout and the wording"). The ruleset is UI/UX best practice (one concept gets one name and one sentence style; a confirm button names its object; tooltips name their buttons) plus alignment with the conventions of Ed's own flow (Title Case noun captions, inputs above outputs, short verb-first button labels):
+
+- **Four parallel section captions**: new Ed-style hr dividers captioned "Flow" (top of the Update column) and "Backup" (top of the Backup column), next to the existing "This tab" and "Admin", so every dashboard block now carries a Title Case caption.
+- **The "Tab version" field is renamed "Tab status"** and restyled to exactly match the "Flow status" widget (6 units wide, 2 rows, left-aligned). The two status fields also speak the same sentence style now: "Tab update available: 9.9.9. Press [Update tab]." (plus " (current version unknown)" when no running marker survives an editor Deploy) and "You are already running the latest tab version (4.12.9)." replace the arrow shorthand "4.12.8 -> 4.12.8 (up to date)". The node status under the function keeps the compact arrow format.
+- **Boot sentence**: the boot inject now writes "Running tab version 4.12.9." into the field (one sentence style, was "Running: 4.12.8"); the v4.12.8 editor-Deploy fallback still parses the boot payload, unchanged.
+- **[Confirm restore] -> [Confirm restore backup]** (the confirm names its object, parallel to [Restore backup]); the restore prompt now says "Press [Confirm restore backup] to restore."
+- **Tooltips speak the button names**: [Update flow] now advises "Make a [Back up settings] first; the flows restart afterwards.", and the [Check for updates] tooltip says "Tab status field" instead of "Tab version field". The deploy toasts likewise say "Tab status field".
+- Group name "Backup & admin" -> "Backup & Admin" (Title Case, like the four captions).
+- No runtime behavior change; the version is bumped on all three spots (tab node, boot sentence, version.json) so running 4.12.8 tabs self-update to the new layout.
+- Harness section T27 added (+4: Flow and Backup caption dividers, Flow status and Tab status share one widget style, restore chain and tooltip wording); the wpu0093 display asserts in the older self-update sections and in T23/T24/T26 moved to the sentence format -> **231/231**.
+## v4.12.8 (98 nodes)
 
 The Tab version field survives a manual editor Deploy (live finding 24 Nov: after importing an unrelated flow in the browser editor and pressing Deploy, the Tab version field showed "unknown -> 4.12.7 (update!)" while 4.12.7 was actually running):
 

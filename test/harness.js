@@ -502,13 +502,13 @@ section('T18 v4.11 self-update: phase, pinned version.json, validation, wpu-only
   ok(c3.stores.default.WPU.selfLatest.version === '4.11.0', 'selfLatest stored');
   c3 = mk93();
   r = c3.run('wpu0093', { statusCode: 200, _phase: 'selfcheck', payload: { version: '4.11.0', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
-  ok(!r[0] && r[1] && r[1].payload === '4.10.4 -> 4.11.0 (update!)', 'selfcheck + newer -> display only, NO download', r[1] && r[1].payload);
+  ok(!r[0] && r[1] && r[1].payload === 'Tab update available: 4.11.0. Press [Update tab].', 'selfcheck + newer -> display only (full-sentence display), NO download', r[1] && r[1].payload);
   c3 = mk93();
   r = c3.run('wpu0093', { statusCode: 200, _phase: 'selfupdate', payload: { version: '4.11.0', flowUrl: 'https://evil.example/x.json' } });
   ok(r[2] && /outside the HeishamonNR-update-tab repo/.test(r[2].payload) && !r[0], 'evil flowUrl refused');
   c3 = mk93();
   r = c3.run('wpu0093', { statusCode: 200, _phase: 'selfupdate', payload: { version: '4.10.4', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
-  ok(r[1] && r[1].payload === '4.10.4 -> 4.10.4 (up to date)' && !r[0], 'selfupdate + same version -> "up to date" display, no download', r[1] && r[1].payload);
+  ok(r[1] && r[1].payload === 'You are already running the latest tab version (4.10.4).' && !r[0], 'selfupdate + same version -> up-to-date sentence display, no download', r[1] && r[1].payload);
   c3 = mk93();
   r = c3.run('wpu0093', { statusCode: 200, _phase: 'selfupdate', payload: { version: '4.11-beta', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
   ok(r[2] && /unexpected version format/.test(r[2].payload), 'non-X.Y.Z refused');
@@ -590,7 +590,7 @@ section('T21 v4.12: dashboard sections, updater check-then-apply UX, response-no
   const byid = Object.fromEntries(tab.map(n => [n.id, n]));
   const groups = tab.filter(n => n.type === 'ui_group');
   const gnames = groups.map(g => g.name + ':' + g.order).sort();
-  ok(groups.length === 2 && gnames.join('|') === 'Backup & admin:2|Update:1', 'exactly two dashboard groups: Update (order 1) and Backup & admin (order 2)', gnames);
+  ok(groups.length === 2 && gnames.join('|') === 'Backup & Admin:2|Update:1', 'exactly two dashboard groups: Update (order 1) and Backup & Admin (order 2)', gnames);
   const widgetGroups = new Set(groups.map(g => g.id));
   const widgets = tab.filter(n => String(n.type).startsWith('ui_') && n.type !== 'ui_tab' && n.type !== 'ui_group' && n.type !== 'ui_toast');
   ok(widgets.every(w => widgetGroups.has(w.group)), 'every dashboard widget is assigned to a section group', widgets.filter(w => !widgetGroups.has(w.group)).map(w => w.id));
@@ -650,8 +650,8 @@ section('T22 v4.12.3: two fixed columns (2 groups of 6 units), full-width rows, 
   ok(div('wpu00c0') && byid['wpu00c0'].group === 'wpu-ui-grp' && byid['wpu00c0'].order === 5, 'Tab updater divider (Ed-style hr template, local scope, inert) in the Update column');
   ok(div('wpu00c1') && byid['wpu00c1'].group === 'wpu-ui-grp3' && byid['wpu00c1'].order === 6, 'Admin divider (Ed-style hr template) in the Backup & admin column');
   const colCount = g => widgets.filter(w => w.group === g).length;
-  ok(colCount(groups[0].id) === 8 && colCount(groups[1].id) === 8, 'Update column holds 8 widgets (7 rows + This tab divider), Backup & admin holds 8 (7 rows + Admin divider)', [colCount(groups[0].id), colCount(groups[1].id)]);
-  const expected = { wpu0001: 'Check for updates', wpu0090: 'Update tab', wpu0002: 'Back up settings', wpu0048: 'Restore backup', wpu0049: 'Confirm restore', wpu0080: 'Download flows' };
+  ok(colCount(groups[0].id) === 9 && colCount(groups[1].id) === 9, 'Update column holds 9 widgets (7 rows + Flow and This tab dividers), Backup & Admin holds 9 (7 rows + Backup and Admin dividers)', [colCount(groups[0].id), colCount(groups[1].id)]);
+  const expected = { wpu0001: 'Check for updates', wpu0090: 'Update tab', wpu0002: 'Back up settings', wpu0048: 'Restore backup', wpu0049: 'Confirm restore backup', wpu0080: 'Download flows' };
   const mism = Object.entries(expected).filter(([id, nm]) => byid[id].name !== nm || byid[id].label !== nm).map(([id]) => id + '=' + byid[id].name);
   ok(mism.length === 0, 'button wording is the agreed consistent set', mism);
   const badTerm = widgets.filter(w => w.type !== 'ui_template' && ((typeof w.label === 'string' && /updater/i.test(w.label)) || (typeof w.name === 'string' && /updater/i.test(w.name)))).map(w => w.id + ':' + (w.label || w.name));
@@ -688,7 +688,7 @@ section('T23 v4.12.4: CDN cache-busters on all pinned raw fetches, boot refresh 
   ok(!/\?cb=/.test(byid['wpu0095'].func), 'wpu0095 validates the flowUrl exactly as stored in version.json (the buster is added only at fetch time)');
   const inj = byid['wpu00c2'];
   ok(inj && inj.type === 'inject' && inj.once === true && JSON.stringify(inj.wires) === '[["wpu00a1"]]', 'boot inject (once) -> wpu00a1: the Tab version field refreshes on every restart, so no stale "(update!)" text survives a deploy', inj && inj.wires);
-  ok(!!inj && inj.payload === 'Running: ' + tabNode.version && tabNode.version === vjson.version, 'boot text "Running: <version>" stays in sync with the tab node and version.json', { inj: inj && inj.payload, tab: tabNode.version, json: vjson.version });
+  ok(!!inj && inj.payload === 'Running tab version ' + tabNode.version + '.' && tabNode.version === vjson.version, 'boot sentence "Running tab version <version>." stays in sync with the tab node and version.json', { inj: inj && inj.payload, tab: tabNode.version, json: vjson.version });
   ok(/isSelf = \(msg\._phase === "selfupdate"\)/.test(f31) && /Tab update succeeded/.test(f31) && /Flow update succeeded/.test(f31), 'wpu0031 labels the deploy "Tab update succeeded" vs "Flow update succeeded" by phase');
   ok(/_phase: "selfupdate",/.test(byid['wpu0096'].func), 'wpu0096 tags its POST with _phase "selfupdate" so the report can tell tab from flow');
   const stale = [];
@@ -701,7 +701,7 @@ section('T23 v4.12.4: CDN cache-busters on all pinned raw fetches, boot refresh 
   ok(stale.length === 0, 'no stale button names anywhere user-visible (vocabulary is now Check for updates / Update flow / Update tab)', stale);
   ok(byid['wpu0009'].label === 'Flow status', 'the package status field is labeled "Flow status" (flow vs tab vocabulary)');
   ok(byid['wpu00c0'].name === 'Line - This tab' && /<left>This tab<\/left>/.test(byid['wpu00c0'].format), 'sub-section divider is captioned "This tab"');
-  ok(tab.length === 98, 'node count is 98 (v4.12.6: separate Check tab version button removed)');
+  ok(tab.length === 100, 'node count is 100 (v4.12.9: Flow and Backup section dividers added)');
   const placed = tab.filter(n => typeof n.x === 'number' && !['ui_tab', 'ui_group', 'tab', 'comment', 'link in', 'link out'].includes(n.type));
   const cellSeen = new Map();
   const coll = [];
@@ -736,10 +736,10 @@ section('T24 v4.12.6: a single [Check for updates] click refreshes both version 
   c2.flow.set('WPU_localFlows', tab, 'memory');
   const tabVer = tab.find(n => n.type === 'tab').version;
   const rNew = c2.run('wpu0093', { statusCode: 200, payload: { version: '9.9.9', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json', notes: 'x' }, _phase: 'selfcheck' });
-  ok(rNew && rNew[1] && rNew[1].payload === tabVer + ' -> 9.9.9 (update!)', 'tab side of the merged check shows current -> available (update!)', rNew && rNew[1] && rNew[1].payload);
+  ok(rNew && rNew[1] && rNew[1].payload === 'Tab update available: 9.9.9. Press [Update tab]. Notes: x', 'tab side of the merged check shows the update as a full sentence in the same style as Flow status (notes included)', rNew && rNew[1] && rNew[1].payload);
   ok(rNew && rNew[0] === null, 'selfcheck never downloads ([Update tab] stays the only apply)');
   const rSame = c2.run('wpu0093', { statusCode: 200, payload: { version: tabVer, flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' }, _phase: 'selfcheck' });
-  ok(rSame && rSame[1] && rSame[1].payload === tabVer + ' -> ' + tabVer + ' (up to date)', 'tab side of the merged check shows (up to date) and changes nothing', rSame && rSame[1] && rSame[1].payload);
+  ok(rSame && rSame[1] && rSame[1].payload === 'You are already running the latest tab version (' + tabVer + ').', 'tab side of the merged check shows the same up-to-date sentence as the Flow status check and changes nothing', rSame && rSame[1] && rSame[1].payload);
 }
 
 // ---------------- T25: restore-helper.json (disaster recovery from the LOCAL download) ----------------
@@ -783,21 +783,32 @@ section('T26 v4.12.8: an editor Deploy strips the tab node version; wpu0093 fall
   ok(/wpu00c2/.test(f93) && f93.includes('.match('), 'wpu0093 has the boot-inject fallback (reads the wpu00c2 payload and parses an x.y.z version)');
   const tabNode = tab.find(n => n.type === 'tab');
   const boot = byid['wpu00c2'];
-  ok(boot.payload === 'Running: ' + tabNode.version, 'boot payload is a registered inject default and stays in sync (it survives an editor Deploy)', boot.payload);
+  ok(boot.payload === 'Running tab version ' + tabNode.version + '.', 'boot payload is a registered inject default and stays in sync (it survives an editor Deploy)', boot.payload);
   // simulate a manual editor Deploy exactly as convertWorkspace emits it: the tab
   // node loses its unregistered version property, the boot inject keeps its payload
   const stripped = JSON.parse(JSON.stringify(tab));
   delete stripped.find(n => n.type === 'tab').version;
   const c = makeCtx(); c.stores.default.WPU = {}; c.stores.memory.WPU_localFlows = stripped;
   const rNew = c.run('wpu0093', { statusCode: 200, _phase: 'selfcheck', payload: { version: '9.9.9', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
-  ok(rNew && rNew[1] && rNew[1].payload === tabNode.version + ' -> 9.9.9 (update!)', 'version stripped by an editor Deploy -> cur restored from the boot payload (no phantom "unknown")', rNew && rNew[1] && rNew[1].payload);
+  ok(rNew && rNew[1] && rNew[1].payload === 'Tab update available: 9.9.9. Press [Update tab].', 'version stripped by an editor Deploy -> cur restored from the boot payload, so the sentence reports the real running version (no phantom "unknown")', rNew && rNew[1] && rNew[1].payload);
   const rSame = c.run('wpu0093', { statusCode: 200, _phase: 'selfcheck', payload: { version: tabNode.version, flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
-  ok(rSame && rSame[1] && rSame[1].payload === tabNode.version + ' -> ' + tabNode.version + ' (up to date)', 'through the fallback, a current tab reports (up to date) instead of offering a phantom update', rSame && rSame[1] && rSame[1].payload);
+  ok(rSame && rSame[1] && rSame[1].payload === 'You are already running the latest tab version (' + tabNode.version + ').', 'through the fallback, a current tab reports the up-to-date sentence instead of offering a phantom update', rSame && rSame[1] && rSame[1].payload);
   const bare = JSON.parse(JSON.stringify(stripped));
   bare.splice(bare.findIndex(n => n.id === 'wpu00c2'), 1);
   const c2 = makeCtx(); c2.stores.default.WPU = {}; c2.stores.memory.WPU_localFlows = bare;
   const rU = c2.run('wpu0093', { statusCode: 200, _phase: 'selfcheck', payload: { version: '9.9.9', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
-  ok(rU && rU[1] && rU[1].payload === 'unknown -> 9.9.9 (update!)', 'no tab version and no boot payload -> still the honest "unknown" display (pre-4.11 installs, unchanged behavior)', rU && rU[1] && rU[1].payload);
+  ok(rU && rU[1] && rU[1].payload === 'Tab update available: 9.9.9 (current version unknown). Press [Update tab].', 'no tab version and no boot payload -> still the honest "(current version unknown)" display (pre-4.11 installs, unchanged behavior)', rU && rU[1] && rU[1].payload);
+}
+
+// ---------------- T27: v4.12.9 consistent dashboard vocabulary and section layout ----------------
+section('T27 v4.12.9: four Title-Case section captions (Flow / This tab / Backup / Admin) and one sentence style for both status fields');
+{
+  const byid = Object.fromEntries(tab.map(n => [n.id, n]));
+  const div = id => byid[id] && byid[id].type === 'ui_template' && byid[id].templateScope === 'local' && byid[id].storeOutMessages === false && byid[id].fwdInMessages === false && /<hr/.test(byid[id].format || '');
+  ok(div('wpu00c3') && byid['wpu00c3'].group === 'wpu-ui-grp' && byid['wpu00c3'].order === 0 && /<left>Flow<\/left>/.test(byid['wpu00c3'].format), 'Update column: new "Flow" caption divider on top (order 0, Ed-style hr template)');
+  ok(div('wpu00c4') && byid['wpu00c4'].group === 'wpu-ui-grp3' && byid['wpu00c4'].order === 0 && /<left>Backup<\/left>/.test(byid['wpu00c4'].format), 'Backup column: new "Backup" caption divider on top (order 0)');
+  ok(['wpu0009', 'wpu00a1'].every(id => byid[id] && byid[id].type === 'ui_text' && byid[id].width === 6 && byid[id].height === 2 && byid[id].layout === 'col-left' && byid[id].format === '{{msg.payload}}') && byid['wpu0009'].label === 'Flow status' && byid['wpu00a1'].label === 'Tab status', 'Flow status and Tab status share one widget style (6 units, 2 rows, left-aligned) with parallel labels');
+  ok(byid['wpu0049'].label === 'Confirm restore backup' && /\[Confirm restore backup\]/.test(byid['wpu0052'].func) && /\[Back up settings\]/.test(byid['wpu0003'].tooltip), 'the restore chain names its object ([Confirm restore backup]) and the [Update flow] tooltip names the [Back up settings] button');
 }
 
 console.log('TOTAL: ' + pass + ' passed, ' + fail + ' failed');

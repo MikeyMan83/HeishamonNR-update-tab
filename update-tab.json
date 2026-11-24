@@ -6,7 +6,7 @@
     "disabled": false,
     "info": "[WP Update] flow tab for HeishaMoNR (PR material).\nAutomatic version check, settings backup AND restore (full global context to/from file, download endpoint),\nplus one-click atomic update via the Node-RED Admin API (id-merge with rebuild safety nets).\n\nWorks with version.json in the repo root; if absent, automatically falls back to a repo scan of the plain GitHub page.\nAdmin login: user/password via the dashboard fields (password session-only in memory, never on disk) or via the environment variables WPU_ADMIN_USER / WPU_ADMIN_PASS. The Admin API URL is derived server-side (loopback 127.0.0.1:1880, or WPU_ADMIN_BASE for a non-standard port or httpAdminRoot) and is therefore not a dashboard field.\nAfter an update the tab reports how many nodes are new/updated/removed/unchanged (counts in the toast; full name list in the Node-RED log).\n[Download flows] button: fetches the full current flow via the Admin API and serves it via a token-gated endpoint (/wpupdate/flows, 24h, private link).\n[Update tab] button: self-update of this tab from this repo's pinned version.json/update-tab.json (wpu-only merge, atomic POST /flows with snapshot + rev; rollback = older update-tab.json from git history).\nSee the included README for installation, behavior and edge cases.",
     "env": [],
-    "version": "4.12.8"
+    "version": "4.12.9"
   },
   {
     "id": "wpu-ui-tab",
@@ -73,7 +73,7 @@
     "height": 1,
     "passthru": false,
     "label": "Check for updates",
-    "tooltip": "One click checks both: the flow version (Installed vs Available, against the HeishaMoNR repo) and this tab (Tab version field, against this repo). One Admin API call, two pinned raw fetches (cache-busted).",
+    "tooltip": "One click checks both: the flow version (Installed vs Available, against the HeishaMoNR repo) and this tab (Tab status field, against this repo). One Admin API call, two pinned raw fetches (cache-busted).",
     "color": "",
     "bgcolor": "",
     "className": "",
@@ -82,7 +82,7 @@
     "payloadType": "str",
     "topic": "check",
     "topicType": "str",
-    "info": "One click checks both: the flow version (Installed vs Available, against the HeishaMoNR repo) and this tab (Tab version field, against this repo). One Admin API call, two pinned raw fetches (cache-busted)."
+    "info": "One click checks both: the flow version (Installed vs Available, against the HeishaMoNR repo) and this tab (Tab status field, against this repo). One Admin API call, two pinned raw fetches (cache-busted)."
   },
   {
     "id": "wpu0002",
@@ -130,7 +130,7 @@
     "height": 1,
     "passthru": false,
     "label": "Update flow",
-    "tooltip": "Installs the latest HeishaMoNR version. Make a backup first! The flows restart afterwards.",
+    "tooltip": "Installs the latest HeishaMoNR version. Make a [Back up settings] first; the flows restart afterwards.",
     "color": "",
     "bgcolor": "",
     "className": "",
@@ -380,7 +380,7 @@
         "wpu0092"
       ]
     ],
-    "func": "// [WP Update] process the GET /flows result\n// out1 (check): show current version, then fetch version.json for the flow AND this tab (v4.12.6 merged check)\n// out2 (apply): download the new flow.json\n// out3 (error): error message\nconst st = flow.get(\"WPU\") || {};\nconst raw = msg.payload;\nconst isV2 = !Array.isArray(raw) && raw && Array.isArray(raw.flows);\nconst flows = isV2 ? raw.flows : (Array.isArray(raw) ? raw : null);\nif (msg.statusCode === 401) {\n    flow.set(\"WPU_token\", null, \"memory\");\n    flow.set(\"WPU_tokenTime\", null, \"memory\");\n    return [null, null, { payload: \"Admin login refused (401): token expired or credentials changed. Press the button again; a new token is then fetched automatically.\", topic: \"WP Update error\" }];\n}\nif (!flows) {\n    return [null, null, { payload: \"Cannot fetch own flows via the Admin API (status \" + msg.statusCode + \"); Check WPU_ADMIN_BASE (environment): example http://127.0.0.1:1880\", topic: \"WP Update error\" }];\n}\nconst rev = isV2 ? raw.rev : null;\nst.rev = rev;\nst.apiV2 = isV2;\n\n// Current version from the changelog node (\"Line - Changelog\": \"Version 26.5.1 Stable\")\nlet cur = null;\nfor (let i = 0; i < flows.length; i++) {\n    const n = flows[i];\n    if (n && n.name === \"Line - Changelog\" && typeof n.format === \"string\") {\n        const m = /Version (\\d+\\.\\d+\\.\\d+)/.exec(n.format);\n        if (m) { cur = m[1]; break; }\n    }\n}\n// fallback: any node with \"changelog\" in its name (a renamed node does not\n// break version detection)\nif (!cur) {\n    for (let i = 0; i < flows.length; i++) {\n        const n = flows[i];\n        if (!n || !/changelog/i.test(String(n.name || \"\"))) { continue; }\n        const fields = [\"format\", \"info\", \"label\"];\n        for (let j = 0; j < fields.length; j++) {\n            const v = n[fields[j]];\n            if (typeof v === \"string\") {\n                const m = /Version (\\d+\\.\\d+\\.\\d+)/.exec(v);\n                if (m) { cur = m[1]; break; }\n            }\n        }\n        if (cur) { break; }\n    }\n}\nst.currentVersion = cur;\nflow.set(\"WPU\", st);\n// large blob only in the memory store (prevents MB-scale disk writes)\nflow.set(\"WPU_localFlows\", flows, \"memory\");\nnode.status({ text: \"Current version: \" + (cur || \"unknown\") });\n\nconst curText = cur || \"unknown\";\nmsg._phase = msg._phase || \"check\";\nif (msg._phase === \"flowdl\") {\n    // just the fetched flows; no version.json/download needed\n    return [null, null, null, { _phase: \"flowdl\", _base: msg._base }];\n}\nif (msg._phase === \"selfupdate\" || msg._phase === \"selfcheck\") {\n    // self-update: the updater repo's own version.json (pinned URL)\n    return [null, null, null, null, { _phase: msg._phase, _base: msg._base, url: \"https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/version.json?cb=\" + Date.now(), method: \"GET\", headers: {}, payload: \"\" }]; // ?cb=N bypasses stale CDN edges\n}\nif (msg._phase === \"apply\") {\n    if (!st.latest || !st.latest.flowUrl) {\n        return [null, null, { payload: \"Press [Check for updates] first: the tab must know where to fetch the new version from.\", topic: \"WP Update error\" }];\n    }\n    if (st.latest.checkedAt && (Date.now() - st.latest.checkedAt > 60 * 60 * 1000)) {\n        return [null, null, { payload: \"Update stopped: the last version check is older than one hour, version \" + st.latest.version + \" may be outdated. Press [Check for updates] first, then [Update flow] again.\", topic: \"WP Update error\" }];\n    }\n    const out = {\n        _phase: \"apply\", _base: msg._base,\n        url: st.latest.flowUrl + (String(st.latest.flowUrl).indexOf(\"?\") >= 0 ? \"&\" : \"?\") + \"cb=\" + Date.now(), method: \"GET\", // v4.4.1: already normalized at storage time; encodeUri here produced %2520 = a live 404\n        headers: {}, payload: \"\"\n    };\n    return [null, out, null];\n}\n// check branch: fetch version info for the flow AND this tab (one click, one GET /flows)\nconst out = {\n    _phase: \"check\", _base: msg._base, _cur: curText,\n    url: \"https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/version.json?cb=\" + Date.now(),\n    method: \"GET\", headers: {}, payload: \"\"\n};\n// v4.12.6: the merged [Check for updates] button also refreshes the Tab version field\nconst self = {\n    _phase: \"selfcheck\", _base: msg._base,\n    url: \"https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/version.json?cb=\" + Date.now(),\n    method: \"GET\", headers: {}, payload: \"\"\n};\nreturn [out, null, null, null, self];",
+    "func": "// [WP Update] process the GET /flows result\n// out1 (check): show current version, then fetch version.json for the flow AND this tab (v4.12.6 merged check)\n// out2 (apply): download the new flow.json\n// out3 (error): error message\nconst st = flow.get(\"WPU\") || {};\nconst raw = msg.payload;\nconst isV2 = !Array.isArray(raw) && raw && Array.isArray(raw.flows);\nconst flows = isV2 ? raw.flows : (Array.isArray(raw) ? raw : null);\nif (msg.statusCode === 401) {\n    flow.set(\"WPU_token\", null, \"memory\");\n    flow.set(\"WPU_tokenTime\", null, \"memory\");\n    return [null, null, { payload: \"Admin login refused (401): token expired or credentials changed. Press the button again; a new token is then fetched automatically.\", topic: \"WP Update error\" }];\n}\nif (!flows) {\n    return [null, null, { payload: \"Cannot fetch own flows via the Admin API (status \" + msg.statusCode + \"); Check WPU_ADMIN_BASE (environment): example http://127.0.0.1:1880\", topic: \"WP Update error\" }];\n}\nconst rev = isV2 ? raw.rev : null;\nst.rev = rev;\nst.apiV2 = isV2;\n\n// Current version from the changelog node (\"Line - Changelog\": \"Version 26.5.1 Stable\")\nlet cur = null;\nfor (let i = 0; i < flows.length; i++) {\n    const n = flows[i];\n    if (n && n.name === \"Line - Changelog\" && typeof n.format === \"string\") {\n        const m = /Version (\\d+\\.\\d+\\.\\d+)/.exec(n.format);\n        if (m) { cur = m[1]; break; }\n    }\n}\n// fallback: any node with \"changelog\" in its name (a renamed node does not\n// break version detection)\nif (!cur) {\n    for (let i = 0; i < flows.length; i++) {\n        const n = flows[i];\n        if (!n || !/changelog/i.test(String(n.name || \"\"))) { continue; }\n        const fields = [\"format\", \"info\", \"label\"];\n        for (let j = 0; j < fields.length; j++) {\n            const v = n[fields[j]];\n            if (typeof v === \"string\") {\n                const m = /Version (\\d+\\.\\d+\\.\\d+)/.exec(v);\n                if (m) { cur = m[1]; break; }\n            }\n        }\n        if (cur) { break; }\n    }\n}\nst.currentVersion = cur;\nflow.set(\"WPU\", st);\n// large blob only in the memory store (prevents MB-scale disk writes)\nflow.set(\"WPU_localFlows\", flows, \"memory\");\nnode.status({ text: \"Current version: \" + (cur || \"unknown\") });\n\nconst curText = cur || \"unknown\";\nmsg._phase = msg._phase || \"check\";\nif (msg._phase === \"flowdl\") {\n    // just the fetched flows; no version.json/download needed\n    return [null, null, null, { _phase: \"flowdl\", _base: msg._base }];\n}\nif (msg._phase === \"selfupdate\" || msg._phase === \"selfcheck\") {\n    // self-update: the updater repo's own version.json (pinned URL)\n    return [null, null, null, null, { _phase: msg._phase, _base: msg._base, url: \"https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/version.json?cb=\" + Date.now(), method: \"GET\", headers: {}, payload: \"\" }]; // ?cb=N bypasses stale CDN edges\n}\nif (msg._phase === \"apply\") {\n    if (!st.latest || !st.latest.flowUrl) {\n        return [null, null, { payload: \"Press [Check for updates] first: the tab must know where to fetch the new version from.\", topic: \"WP Update error\" }];\n    }\n    if (st.latest.checkedAt && (Date.now() - st.latest.checkedAt > 60 * 60 * 1000)) {\n        return [null, null, { payload: \"Update stopped: the last version check is older than one hour, version \" + st.latest.version + \" may be outdated. Press [Check for updates] first, then [Update flow] again.\", topic: \"WP Update error\" }];\n    }\n    const out = {\n        _phase: \"apply\", _base: msg._base,\n        url: st.latest.flowUrl + (String(st.latest.flowUrl).indexOf(\"?\") >= 0 ? \"&\" : \"?\") + \"cb=\" + Date.now(), method: \"GET\", // v4.4.1: already normalized at storage time; encodeUri here produced %2520 = a live 404\n        headers: {}, payload: \"\"\n    };\n    return [null, out, null];\n}\n// check branch: fetch version info for the flow AND this tab (one click, one GET /flows)\nconst out = {\n    _phase: \"check\", _base: msg._base, _cur: curText,\n    url: \"https://raw.githubusercontent.com/edterbak/HeishaMoNR/main/version.json?cb=\" + Date.now(),\n    method: \"GET\", headers: {}, payload: \"\"\n};\n// v4.12.6: the merged [Check for updates] button also refreshes the Tab status field\nconst self = {\n    _phase: \"selfcheck\", _base: msg._base,\n    url: \"https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/version.json?cb=\" + Date.now(),\n    method: \"GET\", headers: {}, payload: \"\"\n};\nreturn [out, null, null, null, self];",
     "outputs": 5,
     "noerr": 0,
     "initialize": "",
@@ -570,7 +570,7 @@
         "wpu067"
       ]
     ],
-    "func": "// [WP Update] POST /flows result\n// NB: after a successful deploy Node-RED restarts the flows, so this message\n// may never arrive. Check the version number on [WP Home].\nif (msg.statusCode === 200 || msg.statusCode === 201 || msg.statusCode === 204 || msg.statusCode === 205) {\n    const isSelf = (msg._phase === \"selfupdate\"); // set by wpu0096 on the self-update POST\n    let text;\n    if (msg._mergeStats) {\n        const s = msg._mergeStats;\n        text = (isSelf ? \"Tab update succeeded: \" : \"Flow update succeeded: \") + s.added + \" new node(s)\" + (s.added > 0 ? \" (\" + (msg._newNames || []).join(\", \") + ((msg._newNames || []).length && s.added > (msg._newNames || []).length ? \", ...\" : \"\") + \")\" : \"\") + \", \" + s.updated + \" updated, \" + s.removed + \" removed, \" + s.unchanged + \" unchanged. \" + (isSelf ? \"The tab reloads itself; the Tab version field refreshes on restart.\" : \"The flows restart now. Open [WP Home] to check the new version number and refresh the dashboard.\") + \" Full name list (new/updated/removed) in the Node-RED log.\";\n    } else {\n        text = (isSelf ? \"Tab update succeeded\" : \"Flow update succeeded\") + \" (planned: \" + (msg._newCount || \"?\") + \" nodes)! \" + (isSelf ? \"The tab reloads itself; the Tab version field refreshes on restart.\" : \"The flows restart now. Open [WP Home] to check the new version number and refresh the dashboard.\");\n    }\n    if (msg._orphanUiTabs && msg._orphanUiTabs.length > 0) {\n        text += \" Note: \" + msg._orphanUiTabs.length + \" old dashboard tab(s) from a previous version were left behind (\" + msg._orphanUiTabs.slice(0, 5).join(\", \") + (msg._orphanUiTabs.length > 5 ? \", ...\" : \"\") + \"); clean up via Configuration Nodes if empty/duplicate.\";\n    }\n    if (msg._suspectTabs && msg._suspectTabs.length > 0) {\n        text += \" Warning: local tab(s) with WP name not recognized in the new package: \" + msg._suspectTabs.join(\", \") + \". Possibly renamed; check manually.\";\n    }\n    node.log(\"[WP Update] deploy OK (HTTP \" + msg.statusCode + \"); flows restarted\");\n    return { payload: text, topic: \"WP Update done\" };\n}\nif (msg.statusCode === 409) {\n    node.warn(\"[WP Update] deploy refused: 409 rev conflict (flows changed in the meantime). Buffer: \" + String(typeof msg.payload === \"object\" ? JSON.stringify(msg.payload) : msg.payload).slice(0, 300));\n    return { payload: \"Deploy refused (409 rev conflict): the flows changed in the meantime. Press [Check for updates] and [Update flow] again.\", topic: \"WP Update error\" };\n}\nnode.warn(\"[WP Update] deploy failed with status \" + msg.statusCode + \". The old version keeps running. Full message: \" + String(typeof msg.payload === \"object\" ? JSON.stringify(msg.payload) : msg.payload).slice(0, 300));\nreturn { payload: \"Deploy failed with status \" + msg.statusCode + \". The old version keeps running. Full message in the Node-RED debug/log.\", topic: \"WP Update error\" };",
+    "func": "// [WP Update] POST /flows result\n// NB: after a successful deploy Node-RED restarts the flows, so this message\n// may never arrive. Check the version number on [WP Home].\nif (msg.statusCode === 200 || msg.statusCode === 201 || msg.statusCode === 204 || msg.statusCode === 205) {\n    const isSelf = (msg._phase === \"selfupdate\"); // set by wpu0096 on the self-update POST\n    let text;\n    if (msg._mergeStats) {\n        const s = msg._mergeStats;\n        text = (isSelf ? \"Tab update succeeded: \" : \"Flow update succeeded: \") + s.added + \" new node(s)\" + (s.added > 0 ? \" (\" + (msg._newNames || []).join(\", \") + ((msg._newNames || []).length && s.added > (msg._newNames || []).length ? \", ...\" : \"\") + \")\" : \"\") + \", \" + s.updated + \" updated, \" + s.removed + \" removed, \" + s.unchanged + \" unchanged. \" + (isSelf ? \"The tab reloads itself; the Tab status field refreshes on restart.\" : \"The flows restart now. Open [WP Home] to check the new version number and refresh the dashboard.\") + \" Full name list (new/updated/removed) in the Node-RED log.\";\n    } else {\n        text = (isSelf ? \"Tab update succeeded\" : \"Flow update succeeded\") + \" (planned: \" + (msg._newCount || \"?\") + \" nodes)! \" + (isSelf ? \"The tab reloads itself; the Tab status field refreshes on restart.\" : \"The flows restart now. Open [WP Home] to check the new version number and refresh the dashboard.\");\n    }\n    if (msg._orphanUiTabs && msg._orphanUiTabs.length > 0) {\n        text += \" Note: \" + msg._orphanUiTabs.length + \" old dashboard tab(s) from a previous version were left behind (\" + msg._orphanUiTabs.slice(0, 5).join(\", \") + (msg._orphanUiTabs.length > 5 ? \", ...\" : \"\") + \"); clean up via Configuration Nodes if empty/duplicate.\";\n    }\n    if (msg._suspectTabs && msg._suspectTabs.length > 0) {\n        text += \" Warning: local tab(s) with WP name not recognized in the new package: \" + msg._suspectTabs.join(\", \") + \". Possibly renamed; check manually.\";\n    }\n    node.log(\"[WP Update] deploy OK (HTTP \" + msg.statusCode + \"); flows restarted\");\n    return { payload: text, topic: \"WP Update done\" };\n}\nif (msg.statusCode === 409) {\n    node.warn(\"[WP Update] deploy refused: 409 rev conflict (flows changed in the meantime). Buffer: \" + String(typeof msg.payload === \"object\" ? JSON.stringify(msg.payload) : msg.payload).slice(0, 300));\n    return { payload: \"Deploy refused (409 rev conflict): the flows changed in the meantime. Press [Check for updates] and [Update flow] again.\", topic: \"WP Update error\" };\n}\nnode.warn(\"[WP Update] deploy failed with status \" + msg.statusCode + \". The old version keeps running. Full message: \" + String(typeof msg.payload === \"object\" ? JSON.stringify(msg.payload) : msg.payload).slice(0, 300));\nreturn { payload: \"Deploy failed with status \" + msg.statusCode + \". The old version keeps running. Full message in the Node-RED debug/log.\", topic: \"WP Update error\" };",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",
@@ -841,7 +841,7 @@
     "id": "wpu0049",
     "type": "ui_button",
     "z": "wpu-tab-0001",
-    "name": "Confirm restore",
+    "name": "Confirm restore backup",
     "x": 700,
     "y": 320,
     "wires": [
@@ -854,7 +854,7 @@
     "width": 6,
     "height": 1,
     "passthru": false,
-    "label": "Confirm restore",
+    "label": "Confirm restore backup",
     "tooltip": "Applies the inspected backup to the global context. First writes a safety copy (snapshot) of the current state, so the restore itself is reversible too.",
     "color": "",
     "bgcolor": "",
@@ -916,7 +916,7 @@
       ]
     ],
     "outputs": 2,
-    "func": "// [WP Update] restore phase 2: inspect the backup file\n// out1: confirmation request | out2: error\nlet b = null;\ntry { b = JSON.parse(String(msg.payload)); } catch (e) { b = null; }\nif (!b || typeof b !== \"object\" || !b.globalContext || typeof b.globalContext !== \"object\") {\n    return [null, { payload: \"No valid backup file found (wp-backup-latest.json). Run [Back up settings] first and try again, or restore manually via the downloadable file.\", topic: \"WP Update error\" }];\n}\nconst n = Object.keys(b.globalContext).length;\nconst gen = (b.meta && b.meta.generated) ? b.meta.generated.slice(0, 19).replace(\"T\", \" \") : \"unknown\";\nconst fv = (b.meta && b.meta.flowVersion) ? b.meta.flowVersion : \"unknown\";\nflow.set(\"WPU_restore\", { backup: b, keys: n, generated: gen });\nnode.status({ text: \"Inspection: \" + n + \" keys (\" + gen + \")\" });\nreturn [{ payload: \"Backup inspected: \" + n + \" settings keys, made \" + gen + \" (flow \" + fv + \"). Press [Confirm restore] to restore.\", topic: \"WP Update restore\" }, null];\n"
+    "func": "// [WP Update] restore phase 2: inspect the backup file\n// out1: confirmation request | out2: error\nlet b = null;\ntry { b = JSON.parse(String(msg.payload)); } catch (e) { b = null; }\nif (!b || typeof b !== \"object\" || !b.globalContext || typeof b.globalContext !== \"object\") {\n    return [null, { payload: \"No valid backup file found (wp-backup-latest.json). Run [Back up settings] first and try again, or restore manually via the downloadable file.\", topic: \"WP Update error\" }];\n}\nconst n = Object.keys(b.globalContext).length;\nconst gen = (b.meta && b.meta.generated) ? b.meta.generated.slice(0, 19).replace(\"T\", \" \") : \"unknown\";\nconst fv = (b.meta && b.meta.flowVersion) ? b.meta.flowVersion : \"unknown\";\nflow.set(\"WPU_restore\", { backup: b, keys: n, generated: gen });\nnode.status({ text: \"Inspection: \" + n + \" keys (\" + gen + \")\" });\nreturn [{ payload: \"Backup inspected: \" + n + \" settings keys, made \" + gen + \" (flow \" + fv + \"). Press [Confirm restore backup] to restore.\", topic: \"WP Update restore\" }, null];\n"
   },
   {
     "id": "wpu0053",
@@ -1520,7 +1520,7 @@
         "wpu074"
       ]
     ],
-    "func": "// [WP Update] self-update: compare the updater repo's version.json (pinned URL)\n// with the version field of the local tab node (wpu-tab-0001),\n// falling back to the boot inject payload when an editor Deploy stripped that field (v4.12.8).\n// phase \"selfcheck\"  -> out2: version display for the Tab version field (always)\n// phase \"selfupdate\" -> out1: download msg only when a newer version exists,\n//                       otherwise out2: \"up to date\" (same UX as the package update:\n//                       check shows versions, the update button applies)\n// out3: error (hub)\nconst st = flow.get(\"WPU\") || {};\nconst local = flow.get(\"WPU_localFlows\", \"memory\") || [];\nconst localTab = local.find(n => n && n.id === \"wpu-tab-0001\");\n// v4.12.8: a manual editor Deploy strips unregistered properties from tab\n// nodes (the editor exports tabs via convertWorkspace, which copies only the\n// registered tab fields), deleting this tab's version marker. The boot inject\n// (wpu00c2) carries the running version in its payload, and payload is a\n// registered inject default that survives an editor Deploy.\nlet cur = (localTab && localTab.version) ? String(localTab.version) : null;\nif (!cur) {\n    const boot = local.find(n => n && n.id === \"wpu00c2\" && typeof n.payload === \"string\");\n    const m = boot ? boot.payload.match(/(\\d+\\.\\d+\\.\\d+)/) : null;\n    if (m) { cur = m[1]; }\n}\nconst v = msg.payload;\nconst display = (t) => [null, { payload: t, topic: \"WP Update\" }, null];\nconst err = (t) => [null, null, { payload: t, topic: \"WP Update error\" }];\nif (msg.statusCode !== 200 || !v || !v.version) {\n    return err(\"Cannot fetch version.json (status \" + msg.statusCode + \"). Check internet (DNS); nothing changed.\");\n}\nif (!/^\\d+\\.\\d+\\.\\d+$/.test(String(v.version))) {\n    return err(\"version.json contains an unexpected version format (\\\"\" + v.version + \"\\\"); only X.Y.Z is supported.\");\n}\nconst fq = String(v.flowUrl || \"\").replace(/%(?![0-9A-Fa-f]{2})/g, \"%25\").replace(/ /g, \"%20\");\nif (!/^https:\\/\\/raw\\.githubusercontent\\.com\\/MikeyMan83\\/HeishamonNR-update-tab\\//.test(fq)) {\n    return err(\"version.json contains a flowUrl outside the HeishamonNR-update-tab repo (\" + v.flowUrl + \"); download refused.\");\n}\nst.selfLatest = { version: v.version, flowUrl: fq, notes: v.notes || \"\", checkedAt: Date.now() };\nflow.set(\"WPU\", st);\nconst isNew = !cur || isNewer(cur, v.version);\nconst text = (cur || \"unknown\") + \" -> \" + v.version + (isNew ? \" (update!)\" : \" (up to date)\");\nnode.status({ text: \"Tab: \" + text });\nif (msg._phase === \"selfupdate\" && isNew) {\n    node.log(\"[WP Update] self-update available: \" + (cur || \"unknown\") + \" -> \" + v.version);\n    return [{ _phase: \"selfupdate\", url: fq + (fq.indexOf(\"?\") >= 0 ? \"&\" : \"?\") + \"cb=\" + Date.now(), method: \"GET\", headers: {}, payload: \"\" }, null, null]; // ?cb=N bypasses stale CDN edges\n}\nreturn display(text);\n\nfunction isNewer(a, b) {\n    if (!a) { return true; }\n    const pa = String(a).split(\".\").map(Number);\n    const pb = String(b).split(\".\").map(Number);\n    for (let i = 0; i < 3; i++) {\n        const x = pa[i] || 0, y = pb[i] || 0;\n        if (y > x) { return true; }\n        if (y < x) { return false; }\n    }\n    return false;\n}\n",
+    "func": "// [WP Update] self-update: compare the updater repo's version.json (pinned URL)\n// with the version field of the local tab node (wpu-tab-0001),\n// falling back to the boot inject payload when an editor Deploy stripped that field (v4.12.8).\n// phase \"selfcheck\"  -> out2: status display for the Tab status field (always)\n// phase \"selfupdate\" -> out1: download msg only when a newer version exists,\n//                       otherwise out2: \"up to date\" (same UX as the package update:\n//                       check shows versions, the update button applies)\n// out3: error (hub)\nconst st = flow.get(\"WPU\") || {};\nconst local = flow.get(\"WPU_localFlows\", \"memory\") || [];\nconst localTab = local.find(n => n && n.id === \"wpu-tab-0001\");\n// v4.12.8: a manual editor Deploy strips unregistered properties from tab\n// nodes (the editor exports tabs via convertWorkspace, which copies only the\n// registered tab fields), deleting this tab's version marker. The boot inject\n// (wpu00c2) carries the running version in its payload, and payload is a\n// registered inject default that survives an editor Deploy.\nlet cur = (localTab && localTab.version) ? String(localTab.version) : null;\nif (!cur) {\n    const boot = local.find(n => n && n.id === \"wpu00c2\" && typeof n.payload === \"string\");\n    const m = boot ? boot.payload.match(/(\\d+\\.\\d+\\.\\d+)/) : null;\n    if (m) { cur = m[1]; }\n}\nconst v = msg.payload;\nconst display = (t) => [null, { payload: t, topic: \"WP Update\" }, null];\nconst err = (t) => [null, null, { payload: t, topic: \"WP Update error\" }];\nif (msg.statusCode !== 200 || !v || !v.version) {\n    return err(\"Cannot fetch version.json (status \" + msg.statusCode + \"). Check internet (DNS); nothing changed.\");\n}\nif (!/^\\d+\\.\\d+\\.\\d+$/.test(String(v.version))) {\n    return err(\"version.json contains an unexpected version format (\\\"\" + v.version + \"\\\"); only X.Y.Z is supported.\");\n}\nconst fq = String(v.flowUrl || \"\").replace(/%(?![0-9A-Fa-f]{2})/g, \"%25\").replace(/ /g, \"%20\");\nif (!/^https:\\/\\/raw\\.githubusercontent\\.com\\/MikeyMan83\\/HeishamonNR-update-tab\\//.test(fq)) {\n    return err(\"version.json contains a flowUrl outside the HeishamonNR-update-tab repo (\" + v.flowUrl + \"); download refused.\");\n}\nst.selfLatest = { version: v.version, flowUrl: fq, notes: v.notes || \"\", checkedAt: Date.now() };\nflow.set(\"WPU\", st);\nconst isNew = !cur || isNewer(cur, v.version);\n// v4.12.9: the node status keeps the compact arrow, the field speaks in the same\n// full sentences as the Flow status field (wpu0019)\nnode.status({ text: \"Tab: \" + (cur || \"unknown\") + \" -> \" + v.version + (isNew ? \" (update!)\" : \" (up to date)\") });\nif (msg._phase === \"selfupdate\" && isNew) {\n    node.log(\"[WP Update] self-update available: \" + (cur || \"unknown\") + \" -> \" + v.version);\n    return [{ _phase: \"selfupdate\", url: fq + (fq.indexOf(\"?\") >= 0 ? \"&\" : \"?\") + \"cb=\" + Date.now(), method: \"GET\", headers: {}, payload: \"\" }, null, null]; // ?cb=N bypasses stale CDN edges\n}\nconst text = isNew\n    ? \"Tab update available: \" + v.version + (cur ? \"\" : \" (current version unknown)\") + \". Press [Update tab].\" + (v.notes ? \" Notes: \" + v.notes : \"\")\n    : \"You are already running the latest tab version (\" + cur + \").\";\nreturn display(text);\n\nfunction isNewer(a, b) {\n    if (!a) { return true; }\n    const pa = String(a).split(\".\").map(Number);\n    const pb = String(b).split(\".\").map(Number);\n    for (let i = 0; i < 3; i++) {\n        const x = pa[i] || 0, y = pb[i] || 0;\n        if (y > x) { return true; }\n        if (y < x) { return false; }\n    }\n    return false;\n}\n",
     "noerr": 0,
     "initialize": "",
     "finalize": "",
@@ -1625,7 +1625,7 @@
     "id": "wpu-ui-grp3",
     "type": "ui_group",
     "z": "wpu-tab-0001",
-    "name": "Backup & admin",
+    "name": "Backup & Admin",
     "tab": "wpu-ui-tab",
     "order": 2,
     "disp": true,
@@ -1637,17 +1637,17 @@
     "id": "wpu00a1",
     "type": "ui_text",
     "z": "wpu-tab-0001",
-    "name": "Tab version",
+    "name": "Tab status",
     "x": 60,
     "y": 720,
     "wires": [],
-    "label": "Tab version",
+    "label": "Tab status",
     "group": "wpu-ui-grp",
     "order": 8,
     "width": 6,
-    "height": 1,
+    "height": 2,
     "format": "{{msg.payload}}",
-    "layout": "row-spread",
+    "layout": "col-left",
     "className": "",
     "style": false
   },
@@ -1784,10 +1784,52 @@
     ]
   },
   {
+    "id": "wpu00c3",
+    "type": "ui_template",
+    "z": "wpu-tab-0001",
+    "group": "wpu-ui-grp",
+    "name": "Line - Flow",
+    "order": 0,
+    "width": 6,
+    "height": 1,
+    "format": "<hr style=\"border-top: 1px solid #a39d99;\nborder-width: 0px 0px 0;\nwidth: 100%;\nmargin-left: auto;\nmargin-right: auto;\nheight: 0px;\nmargin-top: 0;\nborder-bottom: 1px solid #a39d99;\nbox-shadow: 0 0 3px #a39d99\">\n<left>Flow</left>\n",
+    "storeOutMessages": false,
+    "fwdInMessages": false,
+    "resendOnRefresh": false,
+    "templateScope": "local",
+    "className": "",
+    "x": 60,
+    "y": 560,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "wpu00c4",
+    "type": "ui_template",
+    "z": "wpu-tab-0001",
+    "group": "wpu-ui-grp3",
+    "name": "Line - Backup",
+    "order": 0,
+    "width": 6,
+    "height": 1,
+    "format": "<hr style=\"border-top: 1px solid #a39d99;\nborder-width: 0px 0px 0;\nwidth: 100%;\nmargin-left: auto;\nmargin-right: auto;\nheight: 0px;\nmargin-top: 0;\nborder-bottom: 1px solid #a39d99;\nbox-shadow: 0 0 3px #a39d99\">\n<left>Backup</left>\n",
+    "storeOutMessages": false,
+    "fwdInMessages": false,
+    "resendOnRefresh": false,
+    "templateScope": "local",
+    "className": "",
+    "x": 700,
+    "y": 80,
+    "wires": [
+      []
+    ]
+  },
+  {
     "id": "wpu00c2",
     "type": "inject",
     "z": "wpu-tab-0001",
-    "name": "Boot: Tab version field shows the running version",
+    "name": "Boot: Tab status field shows the running version",
     "props": [
       {
         "p": "payload"
@@ -1798,7 +1840,7 @@
     "once": true,
     "onceDelay": 15,
     "topic": "",
-    "payload": "Running: 4.12.8",
+    "payload": "Running tab version 4.12.9.",
     "payloadType": "str",
     "x": 60,
     "y": 800,
