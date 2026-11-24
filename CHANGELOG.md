@@ -1,3 +1,7 @@
+## Docs: context store note (no version bump)
+
+- README gained a "Context store note": the tab keeps the session password, tokens and the large in-flight dumps in a context store NAMED `memory` by design (volatile data never on disk). Installs using Node-RED's default template store names (`memoryOnly`/`file`) lack that store name, so Node-RED logs its "Unknown context store 'memory' ... Using default store." fallback warning on every use. The fix is a one-line settings.js alias, documented in the README. No flow change: the named-store design is intentional (a function node cannot discover the configured store names at runtime).
+
 ## v4.12.11 (current, 100 nodes)
 
 Live finding 24 Nov (dashboard screenshot while 4.12.10 was waiting): when an update is available, the Tab status field appended the repo release notes to the actionable sentence, but the notes text is longer than the field, so the line arrived clipped mid-sentence on the dashboard.

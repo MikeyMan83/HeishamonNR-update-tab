@@ -45,6 +45,22 @@ The tab tries `version.json` first; if absent, the repo scan follows; only if bo
 3. Press **Check for updates**. If Available shows "26.5.1 (update!)": **Back up settings**, then **Update flow**. (The same click also refreshes the Tab status field.)
 4. After the deploy the flows restart: refresh the dashboard and check the new version on [WP Home].
 
+## Context store note
+
+This tab intentionally uses a context store named `memory` for volatile data: the session-only admin password, tokens, and the large in-flight flow and backup dumps (the design promise is "password in memory only, never on disk"). Node-RED's default settings template however names its stores `memoryOnly` and `file`, so a store called `memory` does not exist there. Node-RED then logs "Unknown context store 'memory' specified. Using default store." on every use and silently falls back to your default store. That keeps the tab working (and on memory-backed defaults it behaves identically), but the log is noisy, and on installs whose default store is file-backed the volatile data would land on disk after all.
+
+If your log shows that warning, add an explicit alias to the `contextStorage` block in settings.js:
+
+```js
+contextStorage: {
+    memoryOnly: { module: "memory" },
+    file:       { module: "localfilesystem" },
+    memory:     { module: "memory" }   // alias this tab keeps volatile data in
+},
+```
+
+then restart Node-RED. The warnings disappear and the volatile data is guaranteed to stay in RAM.
+
 ## Manual restore of a local backup (worst case)
 
 The browser download from [Back up settings] is not a convenience extra: it is the disaster-recovery copy. The on-disk backup (in the Node-RED data directory) and [Restore backup] only exist while Node-RED én this tab still work. If the tab or the whole update chain is ever broken, the file you downloaded to your own PC is the artifact you restore from: [Back up settings] before every risky change, and click the download link in the toast so the copy actually lands on your PC.
