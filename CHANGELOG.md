@@ -1,8 +1,18 @@
+## v5.0.0 (current, 100 nodes)
+
+Dashboard 2.0 migration — dashboard items now target **@flowfuse/node-red-dashboard** (Dashboard 2.0, `/dashboard`); legacy `node-red-dashboard` 3.6.6 at `/ui` keeps serving HeishaMoNR itself. Install `@flowfuse/node-red-dashboard` via Manage palette before importing.
+
+- `ui_tab` -> `ui-page` (`/wp-update`, grid layout, 12-column desktop breakpoint keeps the two width-6 groups side by side), `ui_group` -> `ui-group`, `ui_text` -> `ui-text` (`col-left` -> `col-center`; Dashboard 2.0 has no `col-left`), `ui_button` -> `ui-button`, `ui_text_input` -> `ui-text-input`, `ui_template` -> `ui-template` (section dividers unchanged, plain HTML), `ui_toast` -> `ui-notification` x2 (positions `top right`; notifications bind to the ui-base; per-client targeting via `msg.socketid`/`msg._client` unchanged).
+- 60-second private download notifications: DB1’s `msg.timeout` does not exist in Dashboard 2.0; the two download messages now set `msg.ui_update.displayTime = 60` (DB2 dynamic property); node displayTime default set to 5 s.
+- Does NOT ship a `ui-base`/`ui-theme`: importing several Dashboard 2.0 tab files would place two `ui-base` nodes on `/dashboard`, and Dashboard 2.0 shares one socket server across bases — the second base’s pages get no live widget events (dead buttons). Assign the page + notification nodes to your single `ui-base` in the editor’s Dashboard 2.0 sidebar (see README).
+- All logic nodes unchanged except the two notification messages above. Harness updated for the DB2 node types and re-run: 232/232.
+- DB1-specific notes further down (3.6.3 ui_toast.js source, "DB1 has no sticky toast") are historical from here on.
+
 ## Docs: context store note (no version bump)
 
 - README gained a "Context store note": the tab keeps the session password, tokens and the large in-flight dumps in a context store NAMED `memory` by design (volatile data never on disk). Installs using Node-RED's default template store names (`memoryOnly`/`file`) lack that store name, so Node-RED logs its "Unknown context store 'memory' ... Using default store." fallback warning on every use. The fix is a one-line settings.js alias, documented in the README. No flow change: the named-store design is intentional (a function node cannot discover the configured store names at runtime).
 
-## v4.12.11 (current, 100 nodes)
+## v4.12.11 (100 nodes)
 
 Live finding 24 Nov (dashboard screenshot while 4.12.10 was waiting): when an update is available, the Tab status field appended the repo release notes to the actionable sentence, but the notes text is longer than the field, so the line arrived clipped mid-sentence on the dashboard.
 

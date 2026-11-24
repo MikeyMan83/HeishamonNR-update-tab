@@ -340,10 +340,10 @@ section('T12 wpu0020 backup dump (WPU_ excluded, token in memory)');
   ok(out2.payload.includes('/wpupdate/backup?token=' + c.stores.memory.WPU_dlToken), 'relative token link present');
   ok(out2.payload.includes('<a href="/wpupdate/backup?token=' + c.stores.memory.WPU_dlToken + '"'), 'v4.9.1: clickable anchor in toast (DB1 escapes non-raw text)');
   ok(out2.payload.includes('Download the backup</a>'), 'v4.9.1: anchor label present');
-  ok(out2.timeout === 60, 'v4.12.7: backup download toast stays open 60 seconds via msg.timeout');
+  ok(out2.ui_update && out2.ui_update.displayTime === 60, 'v5.0.0 (Dashboard 2.0): backup download notification stays open 60 seconds via msg.ui_update.displayTime');
   const t76 = tab.find(n => n.id === 'wpu0076');
   ok(t76 && t76.raw === true, 'v4.9.1: private toast is raw:true so the anchor renders');
-  ok(t76.displayTime === '', 'v4.12.7: private toast node displayTime is EMPTY so msg.timeout wins (DB1 ui_toast.js: dt = node.displayTime || msg.timeout*1000 || 3000; 0 or negative clamps, so DB1 has no sticky toast)', t76.displayTime);
+  ok(t76.type === 'ui-notification' && t76.displayTime === '5' && t76.ui === '', 'v5.0.0 (Dashboard 2.0): private notification node displayTime 5 s default; ui-base assigned in the editor sidebar (empty until assigned); the 60 s override rides in msg.ui_update.displayTime', t76.displayTime);
   ok(!/evil|localhost|127\.0\.0\.1|:\d{4}\//.test(out2.payload.match(/Download[^\s]*/)[0]), 'no absolute host in link', out2.payload.match(/Download[^\s]*/)[0]);
   // wpu0028 endpoint
   let r = c.run('wpu0028', { req: { query: { token: 'wrong' } } });
@@ -428,7 +428,7 @@ section('T16 v4.10 flow-download: phase, dump+token, private link, endpoint');
   ok(o3[0].socketid === 'sock99' && !!o3[0]._client, 'socketid + _client forwarded (DB1 private toast)');
   ok(o3[0].payload.includes('/wpupdate/flows?token=' + c.stores.memory.WPU_flowDlToken), 'relative token link in private message');
   ok(o3[0].payload.includes('<a href="/wpupdate/flows?token=' + c.stores.memory.WPU_flowDlToken + '"'), 'v4.10.1: flows toast has a clickable anchor (DB1 escapes non-raw text)');
-  ok(o3[0].timeout === 60, 'v4.12.7: flows download toast stays open 60 seconds via msg.timeout');
+  ok(o3[0].ui_update && o3[0].ui_update.displayTime === 60, 'v5.0.0 (Dashboard 2.0): flows download notification stays open 60 seconds via msg.ui_update.displayTime');
   // wpu0081 without cached flows -> error hub
   const c2 = makeCtx();
   const o3b = c2.run('wpu0081', {});
@@ -552,9 +552,9 @@ section('T18 v4.11 self-update: phase, pinned version.json, validation, wpu-only
   c8.stores.default.WPU = { rev: 'r', apiV2: true };
   c8.stores.memory.WPU_localFlows = local;
   c8.stores.memory.WPU_newTab = newTab;
-  const pal2 = [{ nodes: types.filter(t => t !== 'ui_button').map(t => ({ type: t, types: [t], enabled: true })) }];
+  const pal2 = [{ nodes: types.filter(t => t !== 'ui-button').map(t => ({ type: t, types: [t], enabled: true })) }];
   const r8 = c8.run('wpu0096', { statusCode: 200, payload: pal2 });
-  ok(r8[1] && /ui_button/.test(r8[1].payload) && r8[0] === null, 'missing palette type refuses BEFORE POST');
+  ok(r8[1] && /ui-button/.test(r8[1].payload) && r8[0] === null, 'missing palette type refuses BEFORE POST');
 }
 
 section('T19 v4.11.1 network-catch hygiene (feedback on network errors)');
@@ -588,14 +588,14 @@ console.log('\n==============================');
 section('T21 v4.12: dashboard sections, updater check-then-apply UX, response-node headers, English UI');
 {
   const byid = Object.fromEntries(tab.map(n => [n.id, n]));
-  const groups = tab.filter(n => n.type === 'ui_group');
+  const groups = tab.filter(n => n.type === 'ui-group');
   const gnames = groups.map(g => g.name + ':' + g.order).sort();
   ok(groups.length === 2 && gnames.join('|') === 'Backup & Admin:2|Update:1', 'exactly two dashboard groups: Update (order 1) and Backup & Admin (order 2)', gnames);
   const widgetGroups = new Set(groups.map(g => g.id));
-  const widgets = tab.filter(n => String(n.type).startsWith('ui_') && n.type !== 'ui_tab' && n.type !== 'ui_group' && n.type !== 'ui_toast');
+  const widgets = tab.filter(n => String(n.type).startsWith('ui-') && !['ui-page', 'ui-group', 'ui-base', 'ui-theme', 'ui-notification'].includes(n.type));
   ok(widgets.every(w => widgetGroups.has(w.group)), 'every dashboard widget is assigned to a section group', widgets.filter(w => !widgetGroups.has(w.group)).map(w => w.id));
   ok(!byid['wpu00a0'], 'v4.12.6: the separate [Check tab version] button is removed (merged into [Check for updates])');
-  ok(byid['wpu00a1'] && byid['wpu00a1'].type === 'ui_text' && byid['wpu00a1'].group === 'wpu-ui-grp' && byid['wpu00a1'].format === '{{msg.payload}}', 'Tab version display ui_text in Update column');
+  ok(byid['wpu00a1'] && byid['wpu00a1'].type === 'ui-text' && byid['wpu00a1'].group === 'wpu-ui-grp' && byid['wpu00a1'].format === '{{msg.payload}}', 'Tab version display ui_text in Update column');
   ok(byid['wpu0090'] && byid['wpu0090'].topic === 'selfupdate' && byid['wpu0090'].group === 'wpu-ui-grp', 'Update tab button (topic selfupdate) in Update column');
   ok(byid['wpu0001'] && byid['wpu0001'].topic === 'check' && JSON.stringify(byid['wpu0001'].wires) === '[["wpu0010"]]' && byid['wpu0001'].group === 'wpu-ui-grp', 'Check for updates button (topic check) in Update column wired to wpu0010');
   ok(byid['wpu0093'] && byid['wpu0093'].outputs === 3 && JSON.stringify(byid['wpu0093'].wires) === '[["wpu0094"],["wpu00a1"],["wpu074"]]', 'wpu0093 wires: out1 download, out2 version display, out3 error hub');
@@ -623,8 +623,8 @@ section('T21 v4.12: dashboard sections, updater check-then-apply UX, response-no
 section('T22 v4.12.3: two fixed columns (2 groups of 6 units), full-width rows, no label truncation, consistent terminology');
 {
   const byid = Object.fromEntries(tab.map(n => [n.id, n]));
-  const groups = tab.filter(n => n.type === 'ui_group');
-  const widgets = tab.filter(n => String(n.type).startsWith('ui_') && n.type !== 'ui_tab' && n.type !== 'ui_group' && n.type !== 'ui_toast');
+  const groups = tab.filter(n => n.type === 'ui-group');
+  const widgets = tab.filter(n => String(n.type).startsWith('ui-') && !['ui-page', 'ui-group', 'ui-base', 'ui-theme', 'ui-notification'].includes(n.type));
   ok(groups.length === 2 && groups.every(g => Number(g.width) === 6), 'exactly two groups of width 6: the tab always renders as two columns side by side (half screen), one column on narrow screens', groups.map(g => g.name + ':' + g.width));
   ok(widgets.every(w => groups.some(g => g.id === w.group)), 'every dashboard widget belongs to one of the two columns', widgets.filter(w => !groups.some(g => g.id === w.group)).map(w => w.id));
   const ragged = [];
@@ -641,12 +641,12 @@ section('T22 v4.12.3: two fixed columns (2 groups of 6 units), full-width rows, 
     if (!full) ragged.push(g.name);
   }
   ok(ragged.length === 0, 'every column packs into full 6-wide rows (no ragged wrapping)', ragged);
-  const btns = widgets.filter(w => w.type === 'ui_button');
+  const btns = widgets.filter(w => w.type === 'ui-button');
   ok(btns.every(b => b.width === 6), 'every button is a full-width 6-unit row (no width-3 truncated labels like "CHECK UPDATER VER")', btns.map(b => b.name + ':w' + b.width));
   ok(byid['wpu0007'].width === 3 && byid['wpu0008'].width === 3 && byid['wpu0007'].order === byid['wpu0008'].order, 'Installed + Available share one 3+3 row');
   const tooLong = widgets.filter(w => typeof w.label === 'string' && w.label.length > (Number(w.width) === 3 ? 12 : 24)).map(w => w.id + ':' + w.label);
   ok(tooLong.length === 0, 'every visible label fits its widget width (DB1 truncates long labels with an ellipsis)', tooLong);
-  const div = id => byid[id] && byid[id].type === 'ui_template' && byid[id].templateScope === 'local' && byid[id].storeOutMessages === false && byid[id].fwdInMessages === false && /<hr/.test(byid[id].format || '');
+  const div = id => byid[id] && byid[id].type === 'ui-template' && byid[id].templateScope === 'local' && byid[id].storeOutMessages === false && byid[id].fwdInMessages === false && /<hr/.test(byid[id].format || '');
   ok(div('wpu00c0') && byid['wpu00c0'].group === 'wpu-ui-grp' && byid['wpu00c0'].order === 5, 'Tab updater divider (Ed-style hr template, local scope, inert) in the Update column');
   ok(div('wpu00c1') && byid['wpu00c1'].group === 'wpu-ui-grp3' && byid['wpu00c1'].order === 6, 'Admin divider (Ed-style hr template) in the Backup & admin column');
   const colCount = g => widgets.filter(w => w.group === g).length;
@@ -654,7 +654,7 @@ section('T22 v4.12.3: two fixed columns (2 groups of 6 units), full-width rows, 
   const expected = { wpu0001: 'Check for updates', wpu0090: 'Update tab', wpu0002: 'Back up settings', wpu0048: 'Restore backup', wpu0049: 'Confirm restore backup', wpu0080: 'Download flows' };
   const mism = Object.entries(expected).filter(([id, nm]) => byid[id].name !== nm || byid[id].label !== nm).map(([id]) => id + '=' + byid[id].name);
   ok(mism.length === 0, 'button wording is the agreed consistent set', mism);
-  const badTerm = widgets.filter(w => w.type !== 'ui_template' && ((typeof w.label === 'string' && /updater/i.test(w.label)) || (typeof w.name === 'string' && /updater/i.test(w.name)))).map(w => w.id + ':' + (w.label || w.name));
+  const badTerm = widgets.filter(w => w.type !== 'ui-template' && ((typeof w.label === 'string' && /updater/i.test(w.label)) || (typeof w.name === 'string' && /updater/i.test(w.name)))).map(w => w.id + ':' + (w.label || w.name));
   ok(badTerm.length === 0, 'user-facing labels use the "tab" wording (no stray "updater" labels)', badTerm);
   const withOpt = widgets.filter(w => typeof w.label === 'string' && w.label.includes('(optional)')).map(w => w.label).sort();
   ok(withOpt.length === 3 && withOpt.join('|') === 'Backup folder (optional)|Password (optional)|User (optional)', 'exactly three optional inputs, all consistently suffixed "(optional)", Admin inputs shortened inside the Admin sub-section', withOpt);
@@ -701,8 +701,8 @@ section('T23 v4.12.4: CDN cache-busters on all pinned raw fetches, boot refresh 
   ok(stale.length === 0, 'no stale button names anywhere user-visible (vocabulary is now Check for updates / Update flow / Update tab)', stale);
   ok(byid['wpu0009'].label === 'Flow status', 'the package status field is labeled "Flow status" (flow vs tab vocabulary)');
   ok(byid['wpu00c0'].name === 'Line - This tab' && /<left>This tab<\/left>/.test(byid['wpu00c0'].format), 'sub-section divider is captioned "This tab"');
-  ok(tab.length === 100, 'node count is 100 (v4.12.9: Flow and Backup section dividers added)');
-  const placed = tab.filter(n => typeof n.x === 'number' && !['ui_tab', 'ui_group', 'tab', 'comment', 'link in', 'link out'].includes(n.type));
+  ok(tab.length === 100, 'node count is 100 (v4.12.9 dividers; v5.0.0: no shipped ui-base/ui-theme - assign in the editor sidebar)');
+  const placed = tab.filter(n => typeof n.x === 'number' && !['ui-page', 'ui-group', 'ui-base', 'ui-theme', 'ui_tab', 'ui_group', 'tab', 'comment', 'link in', 'link out'].includes(n.type));
   const cellSeen = new Map();
   const coll = [];
   for (const n of placed) {
@@ -719,7 +719,7 @@ section('T24 v4.12.6: a single [Check for updates] click refreshes both version 
 {
   const byid = Object.fromEntries(tab.map(n => [n.id, n]));
   const b = byid['wpu0001'];
-  ok(b && b.type === 'ui_button' && b.label === 'Check for updates' && b.name === 'Check for updates' && b.topic === 'check' && JSON.stringify(b.wires) === '[["wpu0010"]]' && b.group === 'wpu-ui-grp' && b.width === 6, 'wpu0001 is the merged [Check for updates] button (topic check, full-width row, Update column)');
+  ok(b && b.type === 'ui-button' && b.label === 'Check for updates' && b.name === 'Check for updates' && b.topic === 'check' && JSON.stringify(b.wires) === '[["wpu0010"]]' && b.group === 'wpu-ui-grp' && b.width === 6, 'wpu0001 is the merged [Check for updates] button (topic check, full-width row, Update column)');
   ok(!byid['wpu00a0'], 'the separate [Check tab version] button no longer exists');
   const c = makeCtx();
   const local = makeLocal();
@@ -806,10 +806,10 @@ section('T26 v4.12.8: an editor Deploy strips the tab node version; wpu0093 fall
 section('T27 v4.12.9: four Title-Case section captions (Flow / This tab / Backup / Admin) and one sentence style for both status fields');
 {
   const byid = Object.fromEntries(tab.map(n => [n.id, n]));
-  const div = id => byid[id] && byid[id].type === 'ui_template' && byid[id].templateScope === 'local' && byid[id].storeOutMessages === false && byid[id].fwdInMessages === false && /<hr/.test(byid[id].format || '');
+  const div = id => byid[id] && byid[id].type === 'ui-template' && byid[id].templateScope === 'local' && byid[id].storeOutMessages === false && byid[id].fwdInMessages === false && /<hr/.test(byid[id].format || '');
   ok(div('wpu00c3') && byid['wpu00c3'].group === 'wpu-ui-grp' && byid['wpu00c3'].order === 0 && /<left>Flow<\/left>/.test(byid['wpu00c3'].format), 'Update column: new "Flow" caption divider on top (order 0, Ed-style hr template)');
   ok(div('wpu00c4') && byid['wpu00c4'].group === 'wpu-ui-grp3' && byid['wpu00c4'].order === 0 && /<left>Backup<\/left>/.test(byid['wpu00c4'].format), 'Backup column: new "Backup" caption divider on top (order 0)');
-  ok(['wpu0009', 'wpu00a1'].every(id => byid[id] && byid[id].type === 'ui_text' && byid[id].width === 6 && byid[id].height === 2 && byid[id].layout === 'col-left' && byid[id].format === '{{msg.payload}}') && byid['wpu0009'].label === 'Flow status' && byid['wpu00a1'].label === 'Tab status', 'Flow status and Tab status share one widget style (6 units, 2 rows, left-aligned) with parallel labels');
+  ok(['wpu0009', 'wpu00a1'].every(id => byid[id] && byid[id].type === 'ui-text' && byid[id].width === 6 && byid[id].height === 2 && byid[id].layout === 'col-center' && byid[id].format === '{{msg.payload}}') && byid['wpu0009'].label === 'Flow status' && byid['wpu00a1'].label === 'Tab status', 'Flow status and Tab status share one widget style (6 units, 2 rows, left-aligned) with parallel labels');
   ok(byid['wpu0049'].label === 'Confirm restore backup' && /\[Confirm restore backup\]/.test(byid['wpu0052'].func) && /\[Back up settings\]/.test(byid['wpu0003'].tooltip), 'the restore chain names its object ([Confirm restore backup]) and the [Update flow] tooltip names the [Back up settings] button');
 }
 
