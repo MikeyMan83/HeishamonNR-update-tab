@@ -1,3 +1,11 @@
+## v4.12.8 (current, 98 nodes)
+
+The Tab version field survives a manual editor Deploy (live finding 24 Nov: after importing an unrelated flow in the browser editor and pressing Deploy, the Tab version field showed "unknown -> 4.12.7 (update!)" while 4.12.7 was actually running):
+
+- **Root cause, source-verified** (@node-red/editor-client `src/js/nodes.js`): a Deploy posts `createCompleteNodeSet()`, which exports flow tabs through `convertWorkspace()`. That function copies only the registered tab fields (id, type, label, disabled, info, env), so every custom property on a tab node (including this tab's `version`) is silently deleted by each editor Deploy. Admin API deployments (this tab's own updates and every loopback POST /flows) keep the raw config, which is why the field read correctly until the first manual editor Deploy since the tab's install. The flow check is unaffected: it reads the version from the package changelog node (a regular, registered node property).
+- **Fix**: wpu0093 falls back to the boot inject (wpu00c2) payload ("Running: x.y.z") when the running tab node has lost its version property. The inject payload is a registered default that survives an editor Deploy, and T23 already pins it to the tab node version and version.json. No new version location; with both markers absent the display stays the honest "unknown".
+- Harness section T26 added (+5: fallback present, stripped version still displays cur, up to date through the fallback, no-markers "unknown" unchanged, boot payload in sync) -> **227/227**.
+
 ## restore-helper.json (companion, no tab version bump)
 
 Disaster recovery from the LOCAL backup download (user feedback: the browser download is the only copy you can still reach when everything else is gone; the on-disk backups and [Restore backup] require a living tab, the local file does not):
@@ -6,7 +14,7 @@ Disaster recovery from the LOCAL backup download (user feedback: the browser dow
 - Endpoint: POST /wpupdate/restore-helper, e.g. `curl -X POST -H "Content-Type: application/json" --data-binary "@wp-backup-....json" http://<node-red-host>:1880/wpupdate/restore-helper`. Node-RED accepts http-in bodies up to apiMaxLength (default 5 MB, verified in the 5.0.10 21-httpin.js source); settings backups fit. The endpoint is deliberately token-free but unauthenticated (http nodes sit outside adminAuth), hence the delete-after-use warning.
 - No tab version bump: update-tab.json is untouched (still v4.12.7, 98 nodes), the running tab keeps reporting "up to date". README gained a "Manual restore of a local backup (worst case)" section with the full procedure. Harness: new T25 (+11 checks: structure, wprh id rules, mocked restore incl. string/Buffer/400) -> **222/222**.
 
-## v4.12.7 (current, 98 nodes)
+## v4.12.7 (98 nodes)
 
 Download discoverability (user feedback: click Back up settings / Download flows and "the browser does nothing"; the only download path was a private toast that disappeared after 10 seconds):
 

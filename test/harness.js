@@ -775,6 +775,31 @@ section('T25 restore-helper: manual restore of a local backup download (no SSH, 
   ok(run({ payload: Buffer.from(JSON.stringify(sample)) }).statusCode === 200, 'Buffer body also parsed and applied');
 }
 
+// ---------------- T26: v4.12.8 the Tab version field survives a manual editor Deploy ----------------
+section('T26 v4.12.8: an editor Deploy strips the tab node version; wpu0093 falls back to the boot inject payload');
+{
+  const byid = Object.fromEntries(tab.map(n => [n.id, n]));
+  const f93 = byid['wpu0093'].func;
+  ok(/wpu00c2/.test(f93) && f93.includes('.match('), 'wpu0093 has the boot-inject fallback (reads the wpu00c2 payload and parses an x.y.z version)');
+  const tabNode = tab.find(n => n.type === 'tab');
+  const boot = byid['wpu00c2'];
+  ok(boot.payload === 'Running: ' + tabNode.version, 'boot payload is a registered inject default and stays in sync (it survives an editor Deploy)', boot.payload);
+  // simulate a manual editor Deploy exactly as convertWorkspace emits it: the tab
+  // node loses its unregistered version property, the boot inject keeps its payload
+  const stripped = JSON.parse(JSON.stringify(tab));
+  delete stripped.find(n => n.type === 'tab').version;
+  const c = makeCtx(); c.stores.default.WPU = {}; c.stores.memory.WPU_localFlows = stripped;
+  const rNew = c.run('wpu0093', { statusCode: 200, _phase: 'selfcheck', payload: { version: '9.9.9', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
+  ok(rNew && rNew[1] && rNew[1].payload === tabNode.version + ' -> 9.9.9 (update!)', 'version stripped by an editor Deploy -> cur restored from the boot payload (no phantom "unknown")', rNew && rNew[1] && rNew[1].payload);
+  const rSame = c.run('wpu0093', { statusCode: 200, _phase: 'selfcheck', payload: { version: tabNode.version, flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
+  ok(rSame && rSame[1] && rSame[1].payload === tabNode.version + ' -> ' + tabNode.version + ' (up to date)', 'through the fallback, a current tab reports (up to date) instead of offering a phantom update', rSame && rSame[1] && rSame[1].payload);
+  const bare = JSON.parse(JSON.stringify(stripped));
+  bare.splice(bare.findIndex(n => n.id === 'wpu00c2'), 1);
+  const c2 = makeCtx(); c2.stores.default.WPU = {}; c2.stores.memory.WPU_localFlows = bare;
+  const rU = c2.run('wpu0093', { statusCode: 200, _phase: 'selfcheck', payload: { version: '9.9.9', flowUrl: 'https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json' } });
+  ok(rU && rU[1] && rU[1].payload === 'unknown -> 9.9.9 (update!)', 'no tab version and no boot payload -> still the honest "unknown" display (pre-4.11 installs, unchanged behavior)', rU && rU[1] && rU[1].payload);
+}
+
 console.log('TOTAL: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
 }

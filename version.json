@@ -1,5 +1,5 @@
 {
-  "version": "4.12.7",
+  "version": "4.12.8",
   "flowUrl": "https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json",
-  "notes": "Download UX: the private download toast (backup + flows) now stays open 60 seconds instead of 10 (DB1 has no sticky toast), with a clearer click-here-to-download line. No other runtime change."
+  "notes": "The Tab version field survives a manual editor Deploy: the Node-RED editor deletes unregistered tab-node properties on Deploy (source-verified), so the running-version check now falls back to the boot-inject payload. No other runtime change."
 }
