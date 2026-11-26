@@ -2,12 +2,15 @@
 """Convert a node-red-dashboard (DB1, /ui) flow JSON to @flowfuse/node-red-dashboard (DB2, /dashboard).
 
 Minimal-diff, id-preserving conversion:
-  - ui_tab    -> ui-page   (SAME id, so every existing z reference stays valid; core auto-creates
-                            the synthetic flow scope for a z pointing at a config node)
+  - ui_tab    -> ui-page   (SAME id, so every existing z/group/tab reference stays valid; core `tab`
+                            nodes are kept as flow scopes)
   - ui_group  -> ui-group  (tab -> page, width -> int, showTitle = disp)
   - widgets   -> ui-*      (type map below; icon 'fa-x' -> 'x'; ui_text layout col-left -> col-center;
                             ui_toast -> ui-notification with ui='' and displayTime as string, 'raw'
                             maps 1:1; ui_ui_control -> ui-control is flagged for MANUAL rework)
+  - ui_template -> ui-template: 'format' carries over; AngularJS directives are auto-rewritten to
+    Vue (ng-repeat -> v-for, ng-bind-html -> v-html, ng-show/hide/click/class/model); templates that
+    still contain Angular-only constructs (filters etc.) are flagged.
   - no ui-base / ui-theme is created: assign page + notification nodes to the single ui-base in the
     editor's Dashboard 2.0 sidebar after import (shipping a second base breaks widget wiring).
   - logic nodes (function, http, mqtt, ...) and config nodes (mqtt-broker, global-config) are untouched.
@@ -15,9 +18,9 @@ Minimal-diff, id-preserving conversion:
 Usage:
   python3 tools/convert-db1-to-db2.py <in.json> <out.json>
 
-Prints a validation report: duplicate ids, dangling wires/links, bad z/group/page/ui refs,
-palette type list (for the GET /nodes pre-flight), conversion counts, and the list of nodes that
-need manual review. Exit code 1 if validation fails.
+Prints a validation report: duplicate ids, dangling wires/links (vs source baseline), bad
+z/group/page/ui refs, palette type list (for the GET /nodes pre-flight), conversion counts, and
+the manual-review list. Exit code 1 if validation fails.
 
 Field mappings verified against flowfuse/node-red-dashboard @ main (nodes/config/ui_page.html,
 ui_group.html, nodes/widgets/ui_*.html) and FlowFuse/node-red-dashboard-2-migration transformers.
@@ -38,7 +41,7 @@ WIDGET_MAP = {
     "ui_chart": "ui-chart",
     "ui_gauge": "ui-gauge",
     "ui_table": "ui-table",
-    "ui_template": "ui-template",       # DB1 'format' field carries over (DB2 also uses 'format')
+    "ui_template": "ui-template",
     "ui_toast": "ui-notification",
     "ui_ui_control": "ui-control",
     "ui_audio": "ui-audio",
@@ -50,6 +53,49 @@ DB2_BREAKPOINTS = [
     {"name": "Small Desktop", "px": 768, "cols": 9},
     {"name": "Desktop", "px": 1024, "cols": 12},
 ]
+
+ANGULAR_FILTER_RE = re.compile(r"\|\s*(filter|date|number|currency|json|limitTo|orderBy)")
+NG_RE = re.compile(r"\bng-[a-z-]+")  # \b avoids matching CSS like padding-left
+
+
+def angular_to_vue(fmt):
+    """Rewrite common AngularJS template directives to Vue. Returns (new_fmt, leftover).
+
+    ng-repeat="item in list [track by $index]" -> v-for="(item, $index) in list" :key="$index"
+    ng-bind-html="expr" -> v-html="expr"; ng-show -> v-show; ng-hide -> v-if="!(...)";
+    ng-click -> @click; ng-class -> :class; ng-model -> v-model.
+    Angular *filters* (| date:...) have no Vue equivalent and are reported as leftover.
+    """
+    def rep_repeat(m):
+        expr = m.group(1).strip()
+        mm = re.match(r"\(\s*([\w$]+)\s*,\s*([\w$]+)\s*\)\s*in\s*(.+?)\s*(?:track\s+by\s+(.+))?$", expr) \
+            or re.match(r"([\w$]+)\s+in\s+(.+?)\s*(?:track\s+by\s+(.+))?$", expr)
+        if not mm:
+            return m.group(0)  # unparseable -> leave, will be flagged
+        if mm.lastindex == 4 and mm.group(1) and "," not in expr.split(" in ")[0]:
+            pass
+        groups = mm.groups()
+        if len(groups) == 4 and mm.re.pattern.startswith(r"\("):
+            item, idx, list_, track = groups
+        else:
+            item, list_, track = groups[0], groups[1], groups[2]
+            idx = None
+        list_ = list_.strip()
+        key = track.strip() if track else (idx or "$index")
+        vfor = "(%s, %s) in %s" % (item, idx or "$index", list_) if idx else "%s in %s" % (item, list_)
+        return 'v-for="%s" :key="%s"' % (vfor, key)
+
+    out = re.sub(r'ng-repeat="([^"]*)"', rep_repeat, fmt)
+    out = re.sub(r'ng-bind-html="([^"]*)"', r'v-html="\1"', out)
+    out = re.sub(r'\bng-show="', 'v-show="', out)
+    out = re.sub(r'\bng-hide="([^"]*)"', lambda m: 'v-if="!(%s)"' % m.group(1), out)
+    out = re.sub(r'\bng-click="', '@click="', out)
+    out = re.sub(r'\bng-class="', ':class="', out)
+    out = re.sub(r'\bng-model="', 'v-model="', out)
+    leftover = sorted(set(NG_RE.findall(out))) if NG_RE.search(out) else []
+    if ANGULAR_FILTER_RE.search(out):
+        leftover.append("angular filters (| date: etc.)")
+    return out, leftover
 
 
 def kebab(s):
@@ -115,9 +161,10 @@ def convert_widget(n, manual, counts):
         n["ui"] = ""
         if "displayTime" in n:
             n["displayTime"] = str(n["displayTime"])
+        was_private = n.get("sendall") is False
         for k in ("sendall", "ok", "cancel", "highlight"):
             n.pop(k, None)  # 'raw' maps 1:1 (DB2 ui-notification has raw); private targeting via msg.socketid/_client
-        if n.get("sendall") is False:
+        if was_private:
             manual.append((n["id"], "ex-ui_toast was PRIVATE (sendall=false): DB2 private targeting rides on "
                                    "msg.socketid/msg._client in the msg - verify the sender sets it"))
         else:
@@ -128,8 +175,13 @@ def convert_widget(n, manual, counts):
                                "manual rework, usually ui-link or payloadType 'navigate'"))
     if old == "ui_template":
         fmt = n.get("format") or ""
-        if re.search(r"ng-[a-z]|ngModel|\|\s*(filter|date|number|currency|json|limitTo)", fmt, re.I):
-            manual.append((n["id"], "ex-ui_template with AngularJS (ng-*/filters) - DB2 uses Vue: rewrite bindings manually"))
+        if NG_RE.search(fmt) or ANGULAR_FILTER_RE.search(fmt):
+            new_fmt, leftover = angular_to_vue(fmt)
+            n["format"] = new_fmt
+            if leftover:
+                manual.append((n["id"], "ex-ui_template still needs manual work after auto-rewrite: " + ", ".join(leftover)))
+            else:
+                counts["ui_template auto-rewritten AngularJS->Vue"] = counts.get("ui_template auto-rewritten AngularJS->Vue", 0) + 1
         else:
             counts["ui_template auto-ok (plain HTML/{{msg}})"] = counts.get("ui_template auto-ok (plain HTML/{{msg}})", 0) + 1
 
@@ -212,7 +264,7 @@ def main():
     print("converted %d nodes -> %s" % (len(flow), dst))
     print("\nconversion counts:")
     for k in sorted(counts):
-        print("  %-28s %d" % (k, counts[k]))
+        print("  %-44s %d" % (k, counts[k]))
     print("\npalette types needed (check against GET /nodes before deploy):")
     print("  " + ", ".join(palette))
     print("\nmanual review needed (%d):" % len(manual))
