@@ -1,5 +1,5 @@
 {
-  "version": "4.12.12",
+  "version": "4.12.13",
   "flowUrl": "https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json",
-  "notes": "Dashboard-family guard in the self-update merge (wpu0096): a self-update that would switch dashboard framework (DB1 ui_tab/ui_* vs DB2 ui-page/ui-*) is refused before any POST; framework-switching files only arrive by manual import. Same-family updates unchanged. See CHANGELOG.md."
+  "notes": "Guard type list corrected to the real Dashboard 2.0 node types (ui-number-input etc.; verified against @flowfuse/node-red-dashboard source). No behavior change for real files. Also ships tools/convert-db1-to-db2.py (DB1->DB2 flow converter with validation report). See CHANGELOG.md."
 }

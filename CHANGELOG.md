@@ -2,7 +2,13 @@
 
 - README gained a "Context store note": the tab keeps the session password, tokens and the large in-flight dumps in a context store NAMED `memory` by design (volatile data never on disk). Installs using Node-RED's default template store names (`memoryOnly`/`file`) lack that store name, so Node-RED logs its "Unknown context store 'memory' ... Using default store." fallback warning on every use. The fix is a one-line settings.js alias, documented in the README. No flow change: the named-store design is intentional (a function node cannot discover the configured store names at runtime).
 
-## v4.12.12 (current, 100 nodes)
+## v4.12.13 (current, 100 nodes)
+
+- The v4.12.12 dashboard-family guard's DB2 type list contained a wrong entry (`ui-numeric-input`; the real DB2 type is `ui-number-input`, verified against `@flowfuse/node-red-dashboard` source) and missed several DB2 widget types. List corrected/completed - no behavior change for real files, but the guard now classifies every DB2 widget type correctly.
+- New tool: `tools/convert-db1-to-db2.py` - deterministic, id-preserving DB1->DB2 flow converter (ui_tab->ui-page in place so z/group refs stay valid, core `tab` nodes kept as flow scopes, widget type map, col-left->col-center, toast->notification) with a validation report (duplicate ids, dangling wires/links vs source baseline, z/group/page/ui refs, palette list for the GET /nodes pre-flight, manual-review list). Tested against the real `flows (26.5.1 stable).json`: 3562 nodes converted, 16 pages, 61 groups, 628 functions parse, 0 new dangling refs, 172 nodes flagged for manual review (149 templates, 16 toasts, 7 ui_control).
+- Tab node `version`, boot-inject payload and `version.json` bumped to 4.12.13. Harness unchanged: **234/234**.
+
+## v4.12.12 (100 nodes)
 
 Dashboard-family guard in the self-update merge (`wpu0096`): before merging, the dashboard framework of the local `wpu*` nodes is compared with the new tab's (DB1 `ui_tab`/`ui_*` vs DB2 `ui-page`/`ui-*`). A framework switch (e.g. the DB2 file on the `dashboard2` branch) is **refused with a clear error before any POST** - the tab would otherwise leave the current dashboard menu (`/ui` vs `/dashboard`) and its widgets would register nowhere. A framework-switching file can now only arrive by deliberate manual import. Same-family updates are unaffected.
 
