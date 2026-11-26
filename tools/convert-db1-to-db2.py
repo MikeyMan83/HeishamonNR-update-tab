@@ -92,7 +92,7 @@ def convert_group(n):
         n.pop(k, None)
 
 
-def convert_widget(n, manual):
+def convert_widget(n, manual, counts):
     old = n["type"]
     n["type"] = WIDGET_MAP[old]
     n.pop("tab", None)  # stale DB1 field; DB2 widgets bind via group (+ z flow scope)
@@ -117,14 +117,21 @@ def convert_widget(n, manual):
             n["displayTime"] = str(n["displayTime"])
         for k in ("sendall", "ok", "cancel", "highlight"):
             n.pop(k, None)  # 'raw' maps 1:1 (DB2 ui-notification has raw); private targeting via msg.socketid/_client
-        manual.append((n["id"], "ex-ui_toast -> ui-notification: check raw/displayTime/position; "
-                               "broadcast vs private is now msg.socketid/msg._client (no sendall)"))
+        if n.get("sendall") is False:
+            manual.append((n["id"], "ex-ui_toast was PRIVATE (sendall=false): DB2 private targeting rides on "
+                                   "msg.socketid/msg._client in the msg - verify the sender sets it"))
+        else:
+            counts["ui_toast auto-ok (broadcast; raw maps 1:1)"] = counts.get("ui_toast auto-ok (broadcast; raw maps 1:1)", 0) + 1
     if old == "ui_ui_control":
         n["ui"] = ""
         manual.append((n["id"], "ex-ui_ui_control -> ui-control: DIFFERENT model (DB2 nav is pages/sidebar) - "
                                "manual rework, usually ui-link or payloadType 'navigate'"))
     if old == "ui_template":
-        manual.append((n["id"], "ex-ui_template -> ui-template: 'format' carries over; verify rendering on /dashboard"))
+        fmt = n.get("format") or ""
+        if re.search(r"ng-[a-z]|ngModel|\|\s*(filter|date|number|currency|json|limitTo)", fmt, re.I):
+            manual.append((n["id"], "ex-ui_template with AngularJS (ng-*/filters) - DB2 uses Vue: rewrite bindings manually"))
+        else:
+            counts["ui_template auto-ok (plain HTML/{{msg}})"] = counts.get("ui_template auto-ok (plain HTML/{{msg}})", 0) + 1
 
 
 def convert(flow):
@@ -141,7 +148,7 @@ def convert(flow):
     for n in flow:
         t = n.get("type")
         if t in WIDGET_MAP:
-            convert_widget(n, manual)
+            convert_widget(n, manual, counts)
             counts[t + "->" + WIDGET_MAP[t]] = counts.get(t + "->" + WIDGET_MAP[t], 0) + 1
         elif t == "ui_base":
             manual.append((n["id"], "DB1 ui_base present: do NOT ship a second DB2 ui-base - remove this node "

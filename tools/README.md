@@ -28,7 +28,9 @@ NEVER from GET /flows (strips credential-store secrets).
 ## Verification status (26 Nov 2026)
 - Static: run on real `flows (26.5.1 stable).json` -> 3562 nodes, 16 pages, 61 groups, 982 widgets,
   628 functions parse, 0 new dangling refs, every ui-* type present in @flowfuse/node-red-dashboard 1.37.0,
-  0 leftover DB1 ui_* types; 172 nodes flagged for manual review (149 templates, 16 toasts, 7 ui_control).
+  0 leftover DB1 ui_* types. Manual review shrinks to 16 nodes: 9 templates with AngularJS bindings
+  (ng-*/filters; DB2 uses Vue) + 7 ui_ui_control (DB2 nav is the sidebar; use ui-link/navigate).
+  140 plain-HTML templates and all 16 broadcast toasts convert automatically.
 - Live: scratch Node-RED 5.0.10 + node-red-dashboard 3.6.6 + @flowfuse/node-red-dashboard 1.37.0,
   converted file deployed via POST /flows (v2, rev, full) -> 200; all 16 pages served at
   /dashboard/<path> (200), zero ui-base/ui-page/ui-group registration errors; original DB1 file
