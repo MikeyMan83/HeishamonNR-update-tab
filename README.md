@@ -98,7 +98,7 @@ The helper uses `wprh`-prefixed ids on purpose and never touches `wpu` ids, so i
 
 ## Tools
 
-- [`tools/convert-db1-to-db2.py`](tools/convert-db1-to-db2.py): deterministic DB1 -> Dashboard 2.0 flow converter (id-preserving, keeps core `tab` flow scopes, converts `ui_tab`->`ui-page`/`ui_group`->`ui-group`/widgets, flags toasts/ui_control/templates for manual review, prints a validation report + palette list for the `GET /nodes` pre-flight). Preview use on a scratch instance only; production cutover waits for Ed's own DB2 release. Usage: `python3 tools/convert-db1-to-db2.py <flows.json> <out.json>`.
+- DB1 -> Dashboard 2.0 converter: branch `tools/db1-db2-converter` (`tools/convert-db1-to-db2.py`) - preview/scratch-instance use only; production cutover waits for Ed's own DB2 release.
 
 ## Honest edge cases
 

@@ -1,5 +1,5 @@
 {
   "version": "4.12.13",
   "flowUrl": "https://raw.githubusercontent.com/MikeyMan83/HeishamonNR-update-tab/main/update-tab.json",
-  "notes": "Guard type list corrected to the real Dashboard 2.0 node types (ui-number-input etc.; verified against @flowfuse/node-red-dashboard source). No behavior change for real files. Also ships tools/convert-db1-to-db2.py (DB1->DB2 flow converter with validation report). See CHANGELOG.md."
+  "notes": "Dashboard-family guard DB2 type list corrected to the real Dashboard 2.0 node types (ui-number-input etc.). The DB1->DB2 converter tool lives on branch tools/db1-db2-converter. See CHANGELOG.md."
 }

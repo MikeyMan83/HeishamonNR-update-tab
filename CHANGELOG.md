@@ -5,7 +5,7 @@
 ## v4.12.13 (current, 100 nodes)
 
 - The v4.12.12 dashboard-family guard's DB2 type list contained a wrong entry (`ui-numeric-input`; the real DB2 type is `ui-number-input`, verified against `@flowfuse/node-red-dashboard` source) and missed several DB2 widget types. List corrected/completed - no behavior change for real files, but the guard now classifies every DB2 widget type correctly.
-- New tool: `tools/convert-db1-to-db2.py` - deterministic, id-preserving DB1->DB2 flow converter (ui_tab->ui-page in place so z/group refs stay valid, core `tab` nodes kept as flow scopes, widget type map, col-left->col-center, toast->notification) with a validation report (duplicate ids, dangling wires/links vs source baseline, z/group/page/ui refs, palette list for the GET /nodes pre-flight, manual-review list). Tested against the real `flows (26.5.1 stable).json`: 3562 nodes converted, 16 pages, 61 groups, 628 functions parse, 0 new dangling refs, 172 nodes flagged for manual review (149 templates, 16 toasts, 7 ui_control).
+- The DB1->DB2 converter tool is NOT part of this branch/release; it lives on branch `tools/db1-db2-converter` (`tools/convert-db1-to-db2.py`, tested against the real 26.5.1: 3562 nodes, 16 pages, 61 groups, 628 funcs parse, 0 new dangling refs, 172 manual-review flags).
 - Tab node `version`, boot-inject payload and `version.json` bumped to 4.12.13. Harness unchanged: **234/234**.
 
 ## v4.12.12 (100 nodes)
